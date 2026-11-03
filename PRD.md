@@ -1310,21 +1310,22 @@ see `src/harness/`, `attacks/`, `docs/architecture.md`,
 
 ## Phase 2 --- First end-to-end vertical slice
 
--   [ ] Implement deterministic mock agent.
--   [ ] Implement one benign task.
--   [ ] Implement one sandboxed read tool and one simulated outbound
+-   [x] Implement deterministic mock agent.
+-   [x] Implement one benign task.
+-   [x] Implement one sandboxed read tool and one simulated outbound
     tool.
--   [ ] Implement one direct-input or tool-output attack.
--   [ ] Implement a minimal policy middleware that blocks an
+-   [x] Implement one direct-input or tool-output attack.
+-   [x] Implement a minimal policy middleware that blocks an
     unauthorized action.
--   [ ] Implement synthetic canary generation and event logging.
--   [ ] Implement evaluator for one attack and one benign task.
--   [ ] Persist the run and events.
--   [ ] Display the run timeline in a minimal Streamlit page.
--   [ ] Add unit and integration tests.
+-   [x] Implement synthetic canary generation and event logging.
+-   [x] Implement evaluator for one attack and one benign task.
+-   [x] Persist the run and events. (Verified on SQLite; MySQL pending
+    service start.)
+-   [x] Display the run timeline in a minimal Streamlit page.
+-   [x] Add unit and integration tests.
 
 **Deliverable:** a repeatable baseline-versus-defended demo with an
-inspectable trace.
+inspectable trace — `scripts/run_experiment.py`, `dashboard/app.py`.
 
 ## Phase 3 --- RAG surface
 
