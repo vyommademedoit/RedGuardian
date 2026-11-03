@@ -1,0 +1,7 @@
+# Local-first: never listen on external interfaces or send usage stats.
+[server]
+address = "localhost"
+headless = true
+
+[browser]
+gatherUsageStats = false

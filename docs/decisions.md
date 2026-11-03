@@ -22,6 +22,10 @@ Conservative, reversible defaults for PRD §16 open decisions. Change any of the
 | D-016 | 2026-11-04 | "Prohibited" tool call = matches the scenario's `tool_call` success predicate, or an `outbound` call carrying the secret/marker | Ground truth independent of the defenses under test | Medium |
 | D-017 | 2026-11-04 | Datetimes stored as naive UTC, returned as aware UTC (`UTCDateTime`) | MySQL `DATETIME` and SQLite drop tzinfo | Low |
 | D-018 | 2026-11-04 | Chroma: one collection per corpus state (`corpus_<id>`); `poisoned` ground truth only in MySQL | Clean reset; defenses can't read the answer key | Low |
+| D-019 | 2026-11-04 | `MockAgent` is a scripted, fully compliant stand-in: obeys "call X with to=Y" in tool output and fetches the key it asks for | Deterministic end-to-end tests without a model; real variance comes from the Ollama adapter | Low |
+| D-020 | 2026-11-04 | EXECUTED stage = token reached an outbound action request; the policy decision is on the same event | PRD FR-07 wording; dashboard never labels a blocked one as a compromise | Medium |
+| D-021 | 2026-11-04 | No `MYSQL_URL` → local SQLite file `.data/redguardian.db` | MySQL is still stopped; same tables via SQLAlchemy, so switching is one env var | Low |
+| D-022 | 2026-11-04 | Streamlit bound to `localhost`, usage stats off (`.streamlit/config.toml`) | Default binds all interfaces and phones home; violates local-first | Low |
 
 ## Still open (not blocking the vertical slice)
 
