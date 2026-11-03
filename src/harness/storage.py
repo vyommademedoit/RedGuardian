@@ -7,13 +7,16 @@ Chunks and embeddings live in ChromaDB (see docs/architecture.md), keyed by
 
 from __future__ import annotations
 
+import os
 from datetime import UTC
+from pathlib import Path
 
 from sqlalchemy import (
     JSON,
     Boolean,
     Column,
     DateTime,
+    Engine,
     Float,
     ForeignKey,
     Integer,
@@ -23,7 +26,13 @@ from sqlalchemy import (
     Text,
     TypeDecorator,
     UniqueConstraint,
+    create_engine,
+    insert,
+    select,
+    update,
 )
+
+from harness.models import Event, RunEvaluation, RunRecord, utcnow
 
 
 class UTCDateTime(TypeDecorator):
@@ -148,3 +157,63 @@ memory_entries = Table(
     Column("status", String(16), nullable=False),  # active | quarantined | deleted
     Column("created_at", UTCDateTime(), nullable=False),
 )
+
+
+# --------------------------------------------------------------------------
+# Access helpers (parameterized via SQLAlchemy Core; NFR-06)
+# --------------------------------------------------------------------------
+
+DEFAULT_SQLITE = Path(".data/redguardian.db")
+
+
+def default_url() -> str:
+    """MYSQL_URL from the environment or .env; else a local SQLite file."""
+    env = Path(".env")
+    if env.exists():
+        for line in env.read_text().splitlines():
+            key, sep, value = line.partition("=")
+            if sep and not line.lstrip().startswith("#"):
+                os.environ.setdefault(key.strip(), value.strip())
+    if url := os.environ.get("MYSQL_URL"):
+        return url
+    DEFAULT_SQLITE.parent.mkdir(exist_ok=True)
+    return f"sqlite:///{DEFAULT_SQLITE.as_posix()}"
+
+
+def connect(url: str | None = None) -> Engine:
+    engine = create_engine(url or default_url())
+    metadata.create_all(engine)  # shortcut: no migrations yet (D-007); add Alembic when the schema changes under real data
+    return engine
+
+
+def save_run(engine: Engine, run: RunRecord) -> None:
+    with engine.begin() as c:
+        c.execute(insert(runs), run.model_dump())
+
+
+def finish_run(engine: Engine, run: RunRecord) -> None:
+    with engine.begin() as c:
+        c.execute(update(runs).where(runs.c.run_id == run.run_id)
+                  .values(status=run.status, error=run.error, finished_at=run.finished_at))
+
+
+def save_evaluation(engine: Engine, ev: RunEvaluation, evaluator_version: str) -> None:
+    with engine.begin() as c:
+        c.execute(insert(evaluations), {"run_id": ev.run_id, "evaluator_version": evaluator_version,
+                                        "result": ev.model_dump(mode="json"), "evaluated_at": utcnow()})
+
+
+class SqlEventLogger:
+    """Append-only event log backed by the ``events`` table."""
+
+    def __init__(self, engine: Engine):
+        self.engine = engine
+
+    def emit(self, event: Event) -> None:
+        with self.engine.begin() as c:
+            c.execute(insert(events), event.model_dump())
+
+    def events(self, run_id: str) -> list[Event]:
+        with self.engine.connect() as c:
+            rows = c.execute(select(events).where(events.c.run_id == run_id).order_by(events.c.seq))
+            return [Event.model_validate(r._asdict()) for r in rows]
