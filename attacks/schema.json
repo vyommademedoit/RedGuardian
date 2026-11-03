@@ -1,0 +1,407 @@
+{
+  "$defs": {
+    "Injection": {
+      "additionalProperties": false,
+      "description": "Where and how the malicious payload enters the target surface.",
+      "properties": {
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "position": {
+          "default": "append",
+          "enum": [
+            "replace",
+            "append",
+            "prepend"
+          ],
+          "title": "Position",
+          "type": "string"
+        },
+        "payload": {
+          "title": "Payload",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "payload"
+      ],
+      "title": "Injection",
+      "type": "object"
+    },
+    "NoToolCallPredicate": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "no_tool_call",
+          "default": "no_tool_call",
+          "title": "Type",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool"
+      ],
+      "title": "NoToolCallPredicate",
+      "type": "object"
+    },
+    "Objective": {
+      "description": "Attacker goals (PRD \u00a75.3).",
+      "enum": [
+        "task_diversion",
+        "targeted_response",
+        "secret_disclosure",
+        "unauthorized_tool_use",
+        "poisoning",
+        "relay_propagation",
+        "persistence",
+        "denial_of_service"
+      ],
+      "title": "Objective",
+      "type": "string"
+    },
+    "ResponseContainsPredicate": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "response_contains",
+          "default": "response_contains",
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ResponseContainsPredicate",
+      "type": "object"
+    },
+    "SecretKind": {
+      "description": "Synthetic-secret labels. Values are always generated, never real.",
+      "enum": [
+        "api_key",
+        "password",
+        "customer_record",
+        "internal_note"
+      ],
+      "title": "SecretKind",
+      "type": "string"
+    },
+    "SecretSpec": {
+      "additionalProperties": false,
+      "description": "A synthetic secret planted in the sandbox for one run.\n\nThe runner generates the value as ``SECRET-<KIND>-<hex>``. It may flow only\nto ``allowed_destinations`` (tool names or recipient identifiers).",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/SecretKind"
+        },
+        "allowed_destinations": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Destinations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "SecretSpec",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "Stage": {
+      "description": "Canary propagation stages (FR-07). Ordered: higher = travelled further.",
+      "enum": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "title": "Stage",
+      "type": "integer"
+    },
+    "Surface": {
+      "description": "Attack surfaces (FR-03).",
+      "enum": [
+        "direct",
+        "rag",
+        "tool_output",
+        "memory",
+        "relay"
+      ],
+      "title": "Surface",
+      "type": "string"
+    },
+    "ToolCallPredicate": {
+      "additionalProperties": false,
+      "description": "True if a tool call to ``tool`` was proposed (or executed, per evaluator)\nwhose serialized arguments contain ``argument_contains``.\nPlaceholders ``{secret}`` and ``{marker}`` are substituted per run.",
+      "properties": {
+        "type": {
+          "const": "tool_call",
+          "default": "tool_call",
+          "title": "Type",
+          "type": "string"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "argument_contains": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Argument Contains"
+        }
+      },
+      "required": [
+        "tool"
+      ],
+      "title": "ToolCallPredicate",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One versioned attack or benign-control definition, loaded from JSON.",
+  "properties": {
+    "attack_id": {
+      "pattern": "^(DIR|RAG|TOOL|MEM|RELAY|BENIGN)-\\d{3}[a-z]?$",
+      "title": "Attack Id",
+      "type": "string"
+    },
+    "version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Version",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "attack",
+        "benign"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "surface": {
+      "$ref": "#/$defs/Surface"
+    },
+    "category": {
+      "title": "Category",
+      "type": "string"
+    },
+    "objective": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Objective"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "severity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Severity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "tags": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "attacker_capability": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Attacker Capability"
+    },
+    "prerequisites": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Prerequisites",
+      "type": "array"
+    },
+    "initial_state": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Initial State",
+      "type": "array"
+    },
+    "cleanup": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Cleanup",
+      "type": "array"
+    },
+    "target_task": {
+      "title": "Target Task",
+      "type": "string"
+    },
+    "injection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Injection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "secret": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SecretSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "stages": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Stage"
+      },
+      "title": "Stages",
+      "type": "array"
+    },
+    "success_condition": {
+      "default": [],
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "no_tool_call": "#/$defs/NoToolCallPredicate",
+            "response_contains": "#/$defs/ResponseContainsPredicate",
+            "tool_call": "#/$defs/ToolCallPredicate"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ToolCallPredicate"
+          },
+          {
+            "$ref": "#/$defs/ResponseContainsPredicate"
+          },
+          {
+            "$ref": "#/$defs/NoToolCallPredicate"
+          }
+        ]
+      },
+      "title": "Success Condition",
+      "type": "array"
+    },
+    "expected_outcome": {
+      "default": [],
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "no_tool_call": "#/$defs/NoToolCallPredicate",
+            "response_contains": "#/$defs/ResponseContainsPredicate",
+            "tool_call": "#/$defs/ToolCallPredicate"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ToolCallPredicate"
+          },
+          {
+            "$ref": "#/$defs/ResponseContainsPredicate"
+          },
+          {
+            "$ref": "#/$defs/NoToolCallPredicate"
+          }
+        ]
+      },
+      "title": "Expected Outcome",
+      "type": "array"
+    },
+    "expected_safe_behavior": {
+      "title": "Expected Safe Behavior",
+      "type": "string"
+    },
+    "benign_controls": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Benign Controls",
+      "type": "array"
+    }
+  },
+  "required": [
+    "attack_id",
+    "version",
+    "kind",
+    "name",
+    "description",
+    "surface",
+    "category",
+    "target_task",
+    "expected_safe_behavior"
+  ],
+  "title": "AttackScenario",
+  "type": "object"
+}
