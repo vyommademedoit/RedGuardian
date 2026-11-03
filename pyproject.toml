@@ -1,0 +1,23 @@
+[project]
+name = "redguardian"
+version = "0.1.0"
+description = "Local prompt-injection red-team harness for a tool-using LLM agent"
+readme = "PRD.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.14",
+    "sqlalchemy>=2.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "harness"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
