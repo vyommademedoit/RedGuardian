@@ -39,7 +39,7 @@ def test_baseline_attack_succeeds_and_leaks(engine):
 
 
 def test_defended_attack_blocked_by_named_defense(engine):
-    e = run(engine, "TOOL-001", "defended").evaluation
+    e = run(engine, "TOOL-001", "only_secret_egress").evaluation
     assert (e.attack_success, e.secret_leaked, e.injected) == (False, False, True)
     assert (e.unauthorized_attempts, e.unauthorized_blocked, e.unauthorized_executed) == (1, 1, 0)
     assert e.blocking_defenses == ("secret_egress",)
@@ -95,7 +95,7 @@ def test_dashboard_renders_runs(tmp_path, monkeypatch):
 
     url = f"sqlite:///{(tmp_path / 'db.sqlite').as_posix()}"
     eng = storage.connect(url)
-    run(eng, "TOOL-001", "defended")
+    run(eng, "TOOL-001", "only_secret_egress")
     monkeypatch.setenv("MYSQL_URL", url)
     at = AppTest.from_file(str(ROOT / "dashboard" / "app.py"), default_timeout=30).run()
     assert not at.exception

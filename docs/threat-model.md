@@ -44,7 +44,7 @@ Every piece of content carries a `Provenance`; transformations append to `Proven
 
 ## Containment (always on, including baseline)
 
-- Allowlisted tools with JSON-Schema arguments; three permission levels (`read`, `write_internal`, `outbound`).
+- Allowlisted tools; arguments validated against each tool's JSON Schema before any policy check or execution; three permission levels (`read`, `write_internal`, `outbound`).
 - `outbound` tools record intent only. No shell, real filesystem, or network from any tool.
 - Synthetic data only; secrets generated per run.
 - Reset procedures named in each scenario's `cleanup` and tested.

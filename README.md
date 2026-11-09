@@ -15,6 +15,6 @@ Results go to MySQL if `MYSQL_URL` is set (env or `.env`, see `.env.example`), o
 
 ## Status
 
-Phases 0–4 done: contracts, JSON attack library, mock agent, tool-output, RAG, cross-session memory and relay attacks (`TOOL-001`, `RAG-001`, `MEM-001`, `RELAY-001` + benign controls and a recovery check `BENIGN-004`), ChromaDB retrieval, persistent memory with quarantine/reset, `secret_egress`, `retrieval_screen`, `memory_screen` and `relay_screen` defenses with five profiles, event trace, evaluator, metrics, run explorer with retrieved sources and memory/relay path. Next: defense suite and comparative evaluation (Phase 5).
+Phases 0–5 done: contracts, JSON attack library, mock agent, attacks on all five surfaces (`DIR`, `TOOL`, `RAG`, `MEM`, `RELAY`) with adaptive variants (`*-001b`, `TOOL-001c`) and a response-channel leak (`TOOL-002`), benign controls and false-refusal probes, ChromaDB retrieval, persistent memory with quarantine/reset, eight defenses (incl. a final-answer output check) with baseline/defended/ablation profiles, recovery experiments, event trace, evaluator, metrics, run explorer. Latest comparison: [docs/results/phase5_benchmark.md](docs/results/phase5_benchmark.md) (mock agent). Next: dashboard and reporting (Phase 6); the Ollama agent adapter is still pending.
 
 RAG runs use offline hash embeddings by default; add `--embedder ollama` to use `nomic-embed-text` (Ollama must be running).

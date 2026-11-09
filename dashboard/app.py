@@ -95,7 +95,7 @@ for e in events:
                   "policy": next((d.decision.value for d in events if d.event_type.value == "policy_decision"
                                   and d.payload.get("chunk_id") == ch["chunk_id"] and d.seq > e.seq), "-")}
                  for ch in p["chunks"]]
-    elif t == "policy_decision" and p.get("point") and e.decision.value != "allow":
+    elif t == "policy_decision" and p.get("point") in ("memory_write", "relay") and e.decision.value != "allow":
         path.append({"seq": e.seq, "session": p.get("session_id"), "operation": f'{p["point"]} (stopped)',
                      "item": "-", "from → to": e.destination, "trust": "-", "origin": "-", "carries marker": None,
                      "policy": f"{e.decision.value} by {e.defense_id}"})

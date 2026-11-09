@@ -6,6 +6,7 @@ readme = "PRD.md"
 requires-python = ">=3.12"
 dependencies = [
     "chromadb>=1.5.9",
+    "jsonschema>=4.26",
     "pydantic>=2.14",
     "pymysql>=1.2.3",
     "sqlalchemy>=2.1",
