@@ -1,6 +1,6 @@
 """Run scenarios under defense profiles and print metrics.
 
-    uv run python scripts/run_experiment.py                      # TOOL-001 + BENIGN-001, baseline vs defended
+    uv run python scripts/run_experiment.py                      # every enabled scenario under every profile
     uv run python scripts/run_experiment.py --attacks TOOL-001 --profiles defended --db sqlite://
 """
 

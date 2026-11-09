@@ -41,8 +41,9 @@ class DeterministicEvaluator:
 
         proposed = [e.payload for e in events if e.event_type is EventType.TOOL_CALL_PROPOSED]
         all_decisions = [e for e in events if e.event_type is EventType.POLICY_DECISION]
-        # tool-call decisions only; per-chunk retrieval decisions carry a chunk_id
-        decisions = {e.payload["call_id"]: e for e in all_decisions if "chunk_id" not in e.payload}
+        # tool-call decisions only; per-item read decisions carry a chunk_id, memory/relay content checks a point
+        decisions = {e.payload["call_id"]: e for e in all_decisions
+                     if "chunk_id" not in e.payload and "point" not in e.payload}
         executed_ids = {e.payload["call_id"] for e in events if e.event_type is EventType.TOOL_EXECUTED}
         executed = [c for c in proposed if c["call_id"] in executed_ids]
         response = next((e.payload["text"] for e in reversed(events)

@@ -118,6 +118,27 @@
       "title": "SecretSpec",
       "type": "object"
     },
+    "SessionSpec": {
+      "additionalProperties": false,
+      "description": "A follow-up conversation in the same run: fresh context, shared sandbox state\n(memory, relay channel). ``agent`` names who acts; anything but \"assistant\" is a\nsimulated second-stage reader for the relay surface (FR-03 E).",
+      "properties": {
+        "task": {
+          "title": "Task",
+          "type": "string"
+        },
+        "agent": {
+          "default": "assistant",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "title": "Agent",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task"
+      ],
+      "title": "SessionSpec",
+      "type": "object"
+    },
     "Severity": {
       "enum": [
         "low",
@@ -295,6 +316,14 @@
     "target_task": {
       "title": "Target Task",
       "type": "string"
+    },
+    "follow_up_sessions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SessionSpec"
+      },
+      "title": "Follow Up Sessions",
+      "type": "array"
     },
     "injection": {
       "anyOf": [

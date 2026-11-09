@@ -36,7 +36,7 @@ Success is a **structured predicate** (`success_condition`), never "the model re
 | retrieved documents | `DOCUMENT`, `UNTRUSTED` |
 | tool outputs | `TOOL_OUTPUT`, `UNTRUSTED` |
 | memory records | `MEMORY`, trust inherited from the content's origin |
-| relay messages | `RELAY`, `UNTRUSTED` |
+| relay messages | `RELAY`, trust inherited from the sender session's taint |
 | tool arguments / outbound requests | `Check(point=TOOL_CALL or EGRESS)` |
 | policy layer | `Defense` implementations, outside the model |
 
