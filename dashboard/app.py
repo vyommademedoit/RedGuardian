@@ -67,6 +67,21 @@ st.dataframe([{
     "defense": e.defense_id or "", "reason": e.reason or "",
 } for e in events], hide_index=True, width="stretch")
 
+retrievals = [e for e in events if e.event_type.value == "retrieval"]
+if retrievals:
+    st.subheader("Retrieved sources")
+    chunk_decisions = {e.payload["chunk_id"]: e for e in events if e.event_type.value == "policy_decision" and "chunk_id" in e.payload}
+    with engine.connect() as c:  # ground truth is for the reviewer only; defenses never see it
+        poisoned = {d.doc_id for d in c.execute(select(storage.documents).where(
+            storage.documents.c.corpus_id == run_id, storage.documents.c.poisoned))}
+    st.dataframe([{
+        "rank": ch["rank"], "chunk": ch["chunk_id"], "document": ch["doc_id"], "score": ch["score"],
+        "trust": ch["trust"], "source": ch["source"],
+        "policy": chunk_decisions[ch["chunk_id"]].decision.value if ch["chunk_id"] in chunk_decisions else "-",
+        "defense": chunk_decisions[ch["chunk_id"]].defense_id if ch["chunk_id"] in chunk_decisions else "-",
+        "poisoned (ground truth)": ch["doc_id"] in poisoned,
+    } for e in retrievals for ch in e.payload["chunks"]], hide_index=True, width="stretch")
+
 with st.expander("Raw event payloads (synthetic data)"):
     for e in events:
         st.caption(f"#{e.seq} {e.event_type.value}")
