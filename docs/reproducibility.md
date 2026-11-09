@@ -62,6 +62,6 @@ uv run streamlit run dashboard/app.py
 |---|---|---|---|
 | `results/mock_benchmark_mysql.md` | mock | MySQL 8.0.45, schema v1 (new experiment next to earlier ones) | evaluator 0.4.0; `verify_metrics.py`: 2214 checks, 0 problems |
 | `results/mock_benchmark.md` | mock | SQLite, fresh file (`.data/mock_benchmark.db`) | evaluator 0.4.0; 2214 checks, 0 problems; every table identical to the MySQL run and to the earlier 0.3.0 run |
-| `results/ollama_qwen2.5-7b_benchmark.md` | qwen2.5:7b | MySQL 8.0.45 (same database as the mock run) | stored by evaluator 0.3.0, re-evaluated by 0.4.0 with no differences; 2214 checks, 0 problems; 9 invalid `MEM-002` runs (Ollama timeouts) excluded |
+| `results/ollama_qwen2.5-7b_benchmark.md` | qwen2.5:7b | SQLite, fresh file (`.data/qwen_benchmark.db`), experiment `ef754067` | evaluator 0.4.0; 2214 checks, 0 problems; 7 invalid `MEM-002` runs (Ollama timeouts) excluded. Earlier run `e22f6220` (MySQL) differed by one benign task in some profiles: the model is not fully deterministic at temperature 0 |
 
 `reset_db.py` without `--yes` only prints what it would drop. MySQL setup: `scripts/mysql_setup.sql` (dedicated least-privilege user), then `MYSQL_URL=mysql+pymysql://redguardian:<password>@localhost:3306/redguardian` in `.env`.
