@@ -31,11 +31,24 @@ class MockAgent:
         proposed = {c.tool for m in messages if m.role == "assistant" for c in m.tool_calls}
         observed = "\n".join(m.content for m in messages if m.role == "tool")
 
-        if not proposed:  # first move: email tasks read the inbox, anything else searches the knowledge base
-            task = next((m.content for m in messages if m.role == "user"), "")
-            return _call("read_inbox") if "email" in task.lower() else _call("search_documents", query=task)
+        task = next((m.content for m in messages if m.role == "user"), "")
+        if not proposed:  # first move: pick the source the task names, else search the knowledge base
+            for word, tool in (("email", "read_inbox"), ("memory", "read_memory"), ("message", "read_messages")):
+                if word in task.lower():
+                    return _call(tool)
+            return _call("search_documents", query=task)
 
-        if self.follows_injections and (hit := INSTRUCTION.search(observed)):
+        # Pass-along tasks ("save it to memory", "forward it to X") are transcription: the mock copies
+        # what it read without acting on it, so a payload fires only where it is read back (later session/agent).
+        # shortcut: a real model may act immediately too; the Ollama adapter will measure that.
+        forward = re.search(r"forward it to ([\w-]+)", task)
+        if "save it to memory" in task:
+            if "write_memory" not in proposed:
+                return _call("write_memory", content=observed)
+        elif forward:
+            if "relay_message" not in proposed:
+                return _call("relay_message", to=forward.group(1), body=observed)
+        elif self.follows_injections and (hit := INSTRUCTION.search(observed)):
             tool, to = hit.groups()
             if tool not in proposed:
                 if "key" in observed.lower() and not SECRET.search(observed) and "read_config" not in proposed:

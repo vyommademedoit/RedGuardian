@@ -82,6 +82,27 @@ if retrievals:
         "poisoned (ground truth)": ch["doc_id"] in poisoned,
     } for e in retrievals for ch in e.payload["chunks"]], hide_index=True, width="stretch")
 
+path = []  # memory writes/reads and relay messages, incl. writes a defense stopped at the boundary
+for e in events:
+    p, t = e.payload, e.event_type.value
+    if t in ("memory_write", "relay_message"):
+        path.append({"seq": e.seq, "session": p.get("session_id"), "operation": t, "item": e.source_id,
+                     "from → to": f'{p["sender"]} → {p["recipient"]}', "trust": p["trust"],
+                     "origin": ", ".join(p["origin"]) or "-", "carries marker": p["contains_canary"], "policy": "allow"})
+    elif t == "memory_read":
+        path += [{"seq": e.seq, "session": p.get("session_id"), "operation": t, "item": ch["chunk_id"],
+                  "from → to": "memory → agent", "trust": ch["trust"], "origin": ch["source"], "carries marker": None,
+                  "policy": next((d.decision.value for d in events if d.event_type.value == "policy_decision"
+                                  and d.payload.get("chunk_id") == ch["chunk_id"] and d.seq > e.seq), "-")}
+                 for ch in p["chunks"]]
+    elif t == "policy_decision" and p.get("point") and e.decision.value != "allow":
+        path.append({"seq": e.seq, "session": p.get("session_id"), "operation": f'{p["point"]} (stopped)',
+                     "item": "-", "from → to": e.destination, "trust": "-", "origin": "-", "carries marker": None,
+                     "policy": f"{e.decision.value} by {e.defense_id}"})
+if path:
+    st.subheader("Memory and relay path")
+    st.dataframe(path, hide_index=True, width="stretch")
+
 with st.expander("Raw event payloads (synthetic data)"):
     for e in events:
         st.caption(f"#{e.seq} {e.event_type.value}")

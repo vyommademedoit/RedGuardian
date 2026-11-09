@@ -67,18 +67,35 @@ class RetrievalScreenDefense:
         untrusted = any(p.trust is Trust.UNTRUSTED for p in check.provenance)
         if untrusted and check.content and (m := self.PATTERN.search(check.content)):
             return PolicyDecision(decision=Decision.QUARANTINE, defense_id=self.defense_id,
-                                  reason=f"untrusted chunk contains an instruction to the assistant: {m.group(0)!r}")
+                                  reason=f"untrusted content contains an instruction to the assistant: {m.group(0)!r}")
         return None
+
+
+class MemoryScreenDefense(RetrievalScreenDefense):
+    """Same heuristic on memory: on write (keeps poison out) and on read (catches entries
+    persisted before the defense was on, e.g. an inherited poisoned namespace)."""
+
+    defense_id = "memory_screen"
+    points = frozenset({CheckPoint.MEMORY_WRITE, CheckPoint.MEMORY_READ})
+
+
+class RelayScreenDefense(RetrievalScreenDefense):
+    """Same heuristic on the inter-agent message boundary."""
+
+    defense_id = "relay_screen"
+    points = frozenset({CheckPoint.RELAY})
 
 
 PROFILES: dict[str, tuple[str, ...]] = {
     "baseline": (),
-    "defended": ("secret_egress", "retrieval_screen"),
+    "defended": ("secret_egress", "retrieval_screen", "memory_screen", "relay_screen"),
     "egress_only": ("secret_egress",),
     "retrieval_only": ("retrieval_screen",),
+    "content_screens": ("retrieval_screen", "memory_screen", "relay_screen"),  # every screen, no egress check
 }
 
 
 def build_policy(profile: str, secrets: dict[str, SecretSpec]) -> Policy:
-    factories = {"secret_egress": lambda: SecretEgressDefense(secrets), "retrieval_screen": RetrievalScreenDefense}
+    factories = {"secret_egress": lambda: SecretEgressDefense(secrets), "retrieval_screen": RetrievalScreenDefense,
+                 "memory_screen": MemoryScreenDefense, "relay_screen": RelayScreenDefense}
     return Policy([factories[d]() for d in PROFILES[profile]])
