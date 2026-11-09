@@ -15,4 +15,6 @@ Results go to MySQL if `MYSQL_URL` is set (env or `.env`, see `.env.example`), o
 
 ## Status
 
-Phases 0–2 done: contracts, JSON attack library, mock agent, tool-output attack, `secret_egress` defense, event trace, evaluator, metrics, run explorer. Next: RAG surface (Phase 3).
+Phases 0–3 done: contracts, JSON attack library, mock agent, tool-output and RAG attacks (`TOOL-001`, `RAG-001` + benign controls), ChromaDB retrieval, `secret_egress` and `retrieval_screen` defenses with four profiles, event trace, evaluator, metrics, run explorer with retrieved sources. Next: persistent memory and relay (Phase 4).
+
+RAG runs use offline hash embeddings by default; add `--embedder ollama` to use `nomic-embed-text` (Ollama must be running).

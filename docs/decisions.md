@@ -26,6 +26,11 @@ Conservative, reversible defaults for PRD §16 open decisions. Change any of the
 | D-020 | 2026-11-04 | EXECUTED stage = token reached an outbound action request; the policy decision is on the same event | PRD FR-07 wording; dashboard never labels a blocked one as a compromise | Medium |
 | D-021 | 2026-11-04 | No `MYSQL_URL` → local SQLite file `.data/redguardian.db` | MySQL is still stopped; same tables via SQLAlchemy, so switching is one env var | Low |
 | D-022 | 2026-11-04 | Streamlit bound to `localhost`, usage stats off (`.streamlit/config.toml`) | Default binds all interfaces and phones home; violates local-first | Low |
+| D-023 | 2026-11-09 | One in-memory Chroma collection per run (`corpus_<run_id>`), dropped when the run ends; persistence at `.data/chroma` deferred until corpora are reused | Strongest reset guarantee: a poisoned corpus cannot leak into the next run | Low |
+| D-024 | 2026-11-09 | Two embedders: `hash` (deterministic bag-of-words, default, offline, used by tests) and `ollama` (`nomic-embed-text`) via `--embedder` | Tests need no model; real runs use real embeddings. Both rank the poisoned chunk in the top 3 for RAG-001 | Low |
+| D-025 | 2026-11-09 | `retrieval_screen`: quarantine an *untrusted* chunk that contains an instruction aimed at the assistant (regex). Heuristic, labelled as such | Transparent and explainable (PRD FR-05); reworded payloads can evade it, which the adaptive variants in Phase 5 will measure | Medium |
+| D-026 | 2026-11-09 | Profiles: `baseline`, `defended` (both defenses), `egress_only`, `retrieval_only` | Shows which layer stops which attack (ablation) | Low |
+| D-027 | 2026-11-09 | `documents` keyed by (`corpus_id` = run id, `doc_id`) and stores text; `connect()` refuses a pre-Phase-3 database with a clear message instead of migrating | Per-run corpus copies; local DB holds only demo runs (D-007 still defers migrations) | Low |
 
 ## Still open (not blocking the vertical slice)
 

@@ -44,6 +44,8 @@ A proposed tool call is **prohibited** if either
 
 ## Known gaps
 
+- `injection_success_rate` counts the Exposed stage. For RAG, `retrieval_screen` quarantines a poisoned chunk *before* the agent sees it, so a defended run can show 0 injection success even though the corpus itself was poisoned. The corpus-level fact is in the `documents` table (`poisoned`).
+
 - Model refusals are not detected yet (the mock never refuses); `false_refusal_rate` currently counts only defense blocks. To be added with the Ollama adapter.
 
 ## Comparison rules

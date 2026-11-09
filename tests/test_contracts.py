@@ -35,7 +35,7 @@ ATTACKS = ROOT / "attacks"
 
 def test_library_loads_shipped_scenarios():
     lib = load_library(ATTACKS)
-    assert list(lib) == ["BENIGN-001", "TOOL-001"]  # sorted, deterministic
+    assert list(lib) == ["BENIGN-001", "BENIGN-002", "RAG-001", "TOOL-001"]  # sorted, deterministic
     scenario, digest = lib["TOOL-001"]
     assert scenario.stages == (Stage.EXPOSED, Stage.EXECUTED)
     assert len(digest) == 64

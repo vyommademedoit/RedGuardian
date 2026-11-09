@@ -1,6 +1,6 @@
 # Architecture
 
-Logical design from PRD §8, as implemented. Status: **Phase 2 vertical slice** — tool-output surface only, deterministic mock agent, one defense (`secret_egress`). RAG, memory, relay, and the Ollama adapter are not built yet.
+Logical design from PRD §8, as implemented. Status: **Phase 3** — tool-output and RAG surfaces, deterministic mock agent, two defenses (`secret_egress`, `retrieval_screen`). Memory, relay, and the Ollama agent adapter are not built yet.
 
 ## Code map
 
@@ -11,9 +11,10 @@ Logical design from PRD §8, as implemented. Status: **Phase 2 vertical slice** 
 | `src/harness/attacks.py` | JSON library loader/validator, definition hashing, schema export | FR-02 |
 | `src/harness/metrics.py` | Metric formulas and denominators | FR-09 |
 | `src/harness/storage.py` | SQLAlchemy Core tables, `connect()`, run/evaluation writers, `SqlEventLogger` (MySQL via `MYSQL_URL`, else `.data/redguardian.db`) | FR-07, FR-11 |
-| `src/harness/sandbox.py` | Fixtures, token generation, payload injection, inert tools `read_inbox`, `read_config`, `send_report` | FR-04 |
+| `src/harness/sandbox.py` | Fixtures (inbox, company knowledge base), token generation, payload injection into emails or documents, inert tools `read_inbox`, `read_config`, `search_documents`, `send_report` | FR-04 |
+| `src/harness/retrieval.py` | Paragraph chunking, `hash`/`ollama` embedders, per-run Chroma `Corpus` with search and drop | FR-03 B |
 | `src/harness/mock_agent.py` | Deterministic scripted agent (`mock-vulnerable` / `mock-safe`) | FR-01 |
-| `src/harness/policy.py` | `Policy` (most restrictive wins), `SecretEgressDefense`, profiles `baseline` / `defended` | FR-05, FR-06 |
+| `src/harness/policy.py` | `Policy` (most restrictive wins), `SecretEgressDefense` (tool calls), `RetrievalScreenDefense` (retrieved chunks), four profiles | FR-05, FR-06 |
 | `src/harness/runner.py` | `run_scenario`: seed → loop (propose → decide → execute) → events → evaluate → persist | FR-08 |
 | `src/harness/evaluator.py` | `DeterministicEvaluator` over stored events | FR-09 |
 | `scripts/run_experiment.py` | CLI: scenarios × profiles, prints per-run verdicts and metrics | FR-08 |
