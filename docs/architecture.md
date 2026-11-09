@@ -1,6 +1,6 @@
 # Architecture
 
-Logical design from PRD §8, as implemented. Status: **Phase 4** — tool-output, RAG, persistent-memory and relay surfaces, deterministic mock agent, four defenses (`secret_egress`, `retrieval_screen`, `memory_screen`, `relay_screen`). Direct-input attacks and the Ollama agent adapter are not built yet.
+Logical design from PRD §8, as implemented. Status: **Phase 5** — all five surfaces (direct, tool output, RAG, memory, relay), deterministic mock agent, eight defenses with baseline/defended/ablation profiles, adaptive variants, recovery experiments. The Ollama agent adapter is not built yet.
 
 ## Code map
 
@@ -15,10 +15,10 @@ Logical design from PRD §8, as implemented. Status: **Phase 4** — tool-output
 | `src/harness/memory.py` | `MemoryStore` on `memory_entries`: append, retrieve, quarantine, delete (soft), reset, per namespace | FR-03 D |
 | `src/harness/retrieval.py` | Paragraph chunking, `hash`/`ollama` embedders, per-run Chroma `Corpus` with search and drop | FR-03 B |
 | `src/harness/mock_agent.py` | Deterministic scripted agent (`mock-vulnerable` / `mock-safe`) | FR-01 |
-| `src/harness/policy.py` | `Policy` (most restrictive wins), `SecretEgressDefense` (tool calls), `RetrievalScreenDefense` (retrieved chunks), `MemoryScreenDefense` (memory write + read), `RelayScreenDefense` (relay messages), five profiles | FR-05, FR-06 |
+| `src/harness/policy.py` | `Policy` (most restrictive wins), `SecretEgressDefense` (tool calls), `RetrievalScreenDefense` (retrieved chunks), `MemoryScreenDefense` (memory write + read), `RelayScreenDefense` (relay messages), `InputScreenDefense`, `DestinationAllowlistDefense`, `TaintGuardDefense`, `OutputGuardDefense`; `DEFENSES` and generated ablation `PROFILES` | FR-05, FR-06 |
 | `src/harness/runner.py` | `run_scenario`: seed → sessions × loop (propose → decide → execute) → events → evaluate → persist | FR-08 |
 | `src/harness/evaluator.py` | `DeterministicEvaluator` over stored events | FR-09 |
-| `scripts/run_experiment.py` | CLI: scenarios × profiles, prints per-run verdicts and metrics | FR-08 |
+| `scripts/run_experiment.py` | CLI: scenarios × profiles, recovery experiments, per-run verdicts and a Markdown comparison table (`--report`) | FR-08, §11 |
 | `dashboard/app.py` | Streamlit run list + per-run timeline (reads storage only, binds to localhost) | FR-10 |
 | `attacks/schema.json` | Generated from `AttackScenario` — do not hand-edit (`uv run python scripts/export_schema.py`) | FR-02 |
 | `attacks/<surface>/<ID>.json` | Scenario definitions; file name = `attack_id` | §10 |
@@ -59,6 +59,27 @@ Key rules:
 - **Events are observed at boundaries**, not inferred from the final answer. `(run_id, seq)` is unique; events are never updated.
 - **Evaluator reads persisted events only.** Re-evaluation writes a new `evaluations` row keyed by `evaluator_version`.
 - **Errors are not defenses.** `AgentError` or tool crash → run `failed`/`incomplete` → `valid=False` → excluded from every rate and counted in `invalid_runs`.
+
+### Defenses (Phase 5)
+
+All defenses live in `policy.py`, each with a stable `defense_id`, its checkpoints, and no access to ground truth. The runner asks the policy at every checkpoint; the most restrictive vote wins and is logged with its `defense_id` and reason.
+
+| `defense_id` | PRD FR-05 family | Checkpoint(s) | Rule |
+|---|---|---|---|
+| `input_screen` | 1 input handling | `INPUT` (untrusted tool output, untrusted user-channel text) | withhold content that contains an instruction aimed at the assistant (regex heuristic) |
+| `retrieval_screen` | 2 retrieval | `RETRIEVAL` (per chunk) | same heuristic on untrusted chunks |
+| `memory_screen` | 3 memory | `MEMORY_WRITE`, `MEMORY_READ` (per entry) | same heuristic on untrusted memory |
+| `relay_screen` | 3/relay | `RELAY` | same heuristic on untrusted relay messages |
+| `destination_allowlist` | 4 tool authorization | `TOOL_CALL` (outbound) | recipient domain must be in `("corp.test",)` |
+| `taint_guard` | 5 capability | `TOOL_CALL` (outbound) | no outbound action once untrusted content entered the session |
+| `secret_egress` | 5/6 data flow at egress | `TOOL_CALL` (outbound) | a synthetic secret may reach only its `allowed_destinations` |
+| `output_guard` | 6 output check | `EGRESS` (final answer) | withhold an answer containing a synthetic secret unless `"user"` is an allowed destination; the original is kept as `raw` evidence |
+
+Always on (containment, not a defense): tool allowlist and JSON-Schema argument validation (`jsonschema`) before the policy is asked; invalid calls are `TOOL_ERROR`s and never execute.
+
+Profiles (`PROFILES`): `baseline`, `defended` (all eight), `no_<id>` (all but one) and `only_<id>` (one alone) — PRD §11 ablations. A withheld input is replaced by `[content from <source> withheld by policy (<defense_id>)]`; the matched text is never echoed back to the agent.
+
+Direct input (DIR surface): an injection with `target: "user_message"` is placed into session 1's user message, which is then labelled `USER`/`UNTRUSTED`, goes through the `INPUT` checkpoint, and taints the session.
 
 ## Canary design
 

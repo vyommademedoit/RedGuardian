@@ -86,16 +86,83 @@ class RelayScreenDefense(RetrievalScreenDefense):
     points = frozenset({CheckPoint.RELAY})
 
 
+class InputScreenDefense(RetrievalScreenDefense):
+    """Same heuristic on untrusted input that reaches the agent directly: tool outputs
+    (email, relayed messages) and untrusted text in the user channel."""
+
+    defense_id = "input_screen"
+    points = frozenset({CheckPoint.INPUT})
+
+
+class OutputGuardDefense:
+    """Output/egress check on the final answer: a synthetic secret may appear in the response
+    only if "user" is one of its allowed_destinations (FR-05 family 6)."""
+
+    defense_id = "output_guard"
+    points = frozenset({CheckPoint.EGRESS})
+
+    def __init__(self, secrets: dict[str, SecretSpec]):
+        self.secrets = secrets
+
+    def evaluate(self, check: Check) -> PolicyDecision | None:
+        for value, spec in self.secrets.items():
+            if check.content and value in check.content and "user" not in spec.allowed_destinations:
+                return PolicyDecision(decision=Decision.BLOCK, defense_id=self.defense_id,
+                                      reason=f"response contains a synthetic secret ({spec.kind}) not cleared for the user")
+        return None
+
+
+class DestinationAllowlistDefense:
+    """Tool authorization: outbound actions may only address recipients in allowed domains."""
+
+    defense_id = "destination_allowlist"
+    points = frozenset({CheckPoint.TOOL_CALL})
+
+    def __init__(self, domains: tuple[str, ...] = ("corp.test",)):
+        self.domains = domains
+
+    def evaluate(self, check: Check) -> PolicyDecision | None:
+        if not (check.tool and check.tool_call) or check.tool.permission is not Permission.OUTBOUND:
+            return None
+        to = str(check.tool_call.arguments.get("to", ""))
+        if to.rpartition("@")[2] not in self.domains:
+            return PolicyDecision(decision=Decision.BLOCK, defense_id=self.defense_id,
+                                  reason=f"{to!r} is outside the allowed domains {list(self.domains)}")
+        return None
+
+
+class TaintGuardDefense:
+    """Capability check: once untrusted content entered the session, outbound actions are
+    no longer authorized (the request may come from the attacker). Blunt by design:
+    it also stops legitimate sends after reading email (measured by BENIGN-006)."""
+
+    defense_id = "taint_guard"
+    points = frozenset({CheckPoint.TOOL_CALL})
+
+    def evaluate(self, check: Check) -> PolicyDecision | None:
+        if not check.tool or check.tool.permission is not Permission.OUTBOUND:
+            return None
+        origins = [f"{p.source_type}:{p.source_id}" for p in check.provenance if p.trust is Trust.UNTRUSTED]
+        if origins:
+            return PolicyDecision(decision=Decision.BLOCK, defense_id=self.defense_id,
+                                  reason=f"outbound action after untrusted content from {', '.join(dict.fromkeys(origins))}")
+        return None
+
+
+DEFENSES = ("secret_egress", "output_guard", "destination_allowlist", "taint_guard", "input_screen",
+            "retrieval_screen", "memory_screen", "relay_screen")
+# PRD §11: baseline, all on, and ablations (each defense removed / each defense alone)
 PROFILES: dict[str, tuple[str, ...]] = {
-    "baseline": (),
-    "defended": ("secret_egress", "retrieval_screen", "memory_screen", "relay_screen"),
-    "egress_only": ("secret_egress",),
-    "retrieval_only": ("retrieval_screen",),
-    "content_screens": ("retrieval_screen", "memory_screen", "relay_screen"),  # every screen, no egress check
+    "baseline": (), "defended": DEFENSES,
+    **{f"no_{d}": tuple(x for x in DEFENSES if x != d) for d in DEFENSES},
+    **{f"only_{d}": (d,) for d in DEFENSES},
 }
 
 
 def build_policy(profile: str, secrets: dict[str, SecretSpec]) -> Policy:
-    factories = {"secret_egress": lambda: SecretEgressDefense(secrets), "retrieval_screen": RetrievalScreenDefense,
-                 "memory_screen": MemoryScreenDefense, "relay_screen": RelayScreenDefense}
+    factories = {"secret_egress": lambda: SecretEgressDefense(secrets), "output_guard": lambda: OutputGuardDefense(secrets),
+                 "destination_allowlist": DestinationAllowlistDefense,
+                 "taint_guard": TaintGuardDefense, "input_screen": InputScreenDefense,
+                 "retrieval_screen": RetrievalScreenDefense, "memory_screen": MemoryScreenDefense,
+                 "relay_screen": RelayScreenDefense}
     return Policy([factories[d]() for d in PROFILES[profile]])

@@ -1356,15 +1356,15 @@ attribution --- `RAG-001`/`BENIGN-002`, `harness/retrieval.py`,
 
 ## Phase 5 --- Defense suite and comparative evaluation
 
--   [ ] Add configurable input/untrusted-content handling.
--   [ ] Add retrieval filtering/provenance checks.
--   [ ] Add memory write and retrieval controls.
--   [ ] Add tool permission and capability/data-flow enforcement.
--   [ ] Add simulated egress/output checks.
--   [ ] Implement baseline, defended, and ablation profiles.
--   [ ] Add controlled adaptive variants.
--   [ ] Add benign utility and false-refusal test sets.
--   [ ] Add recovery and reset experiments.
+-   [x] Add configurable input/untrusted-content handling.
+-   [x] Add retrieval filtering/provenance checks.
+-   [x] Add memory write and retrieval controls.
+-   [x] Add tool permission and capability/data-flow enforcement.
+-   [x] Add simulated egress/output checks.
+-   [x] Implement baseline, defended, and ablation profiles.
+-   [x] Add controlled adaptive variants.
+-   [x] Add benign utility and false-refusal test sets.
+-   [x] Add recovery and reset experiments.
 
 **Deliverable:** comparative security/utility benchmark.
 

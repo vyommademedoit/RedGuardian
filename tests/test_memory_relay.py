@@ -49,7 +49,7 @@ def test_memory_entry_stored_with_provenance(engine):
 
 
 def test_memory_screen_blocks_the_poisoned_write(engine):
-    r = run(engine, "MEM-001", "defended")
+    r = run(engine, "MEM-001", "only_memory_screen")
     e = r.evaluation
     assert not e.attack_success and e.furthest_stage is Stage.EXPOSED and e.blocking_defenses == ("memory_screen",)
     assert MemoryStore(engine, r.run.memory_state_id).retrieve() == []
@@ -66,7 +66,7 @@ def test_relay_attack_crosses_to_second_agent(engine):
 
 
 def test_relay_screen_stops_the_message_at_the_boundary(engine):
-    e = run(engine, "RELAY-001", "defended").evaluation
+    e = run(engine, "RELAY-001", "only_relay_screen").evaluation
     assert not e.attack_success and e.furthest_stage is Stage.EXPOSED and e.blocking_defenses == ("relay_screen",)
 
 
@@ -110,7 +110,7 @@ def test_dashboard_shows_memory_and_relay_path(tmp_path, monkeypatch):
 
     url = f"sqlite:///{(tmp_path / 'db.sqlite').as_posix()}"
     eng = storage.connect(url)
-    relay = run(eng, "RELAY-001", "defended")
+    relay = run(eng, "RELAY-001", "only_relay_screen")
     run(eng, "MEM-001", "baseline")  # newest run: selected by default
     monkeypatch.setenv("MYSQL_URL", url)
     at = AppTest.from_file(str(ROOT / "dashboard" / "app.py"), default_timeout=30).run()

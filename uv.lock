@@ -2454,6 +2454,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
+    { name = "jsonschema" },
     { name = "pydantic" },
     { name = "pymysql" },
     { name = "sqlalchemy" },
@@ -2468,6 +2469,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "chromadb", specifier = ">=1.5.9" },
+    { name = "jsonschema", specifier = ">=4.26" },
     { name = "pydantic", specifier = ">=2.14" },
     { name = "pymysql", specifier = ">=1.2.3" },
     { name = "sqlalchemy", specifier = ">=2.1" },
