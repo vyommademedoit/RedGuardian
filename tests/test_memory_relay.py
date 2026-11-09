@@ -113,11 +113,13 @@ def test_dashboard_shows_memory_and_relay_path(tmp_path, monkeypatch):
     relay = run(eng, "RELAY-001", "only_relay_screen")
     run(eng, "MEM-001", "baseline")  # newest run: selected by default
     monkeypatch.setenv("MYSQL_URL", url)
-    at = AppTest.from_file(str(ROOT / "dashboard" / "app.py"), default_timeout=30).run()
+    at = AppTest.from_file(str(ROOT / "dashboard" / "app.py"), default_timeout=30)
+    at.session_state["view"] = "Run explorer"
+    at.run()
     assert not at.exception and "Memory and relay path" in [h.value for h in at.subheader]
     table = at.dataframe[-1].value
     assert list(table["operation"]) == ["memory_write", "memory_read"]
     assert list(table["session"]) == ["s1", "s2"] and bool(table["carries marker"].iloc[0])
-    at.selectbox[0].select(relay.run.run_id).run()
+    at.selectbox(key="run_select").select(relay.run.run_id).run()
     table = at.dataframe[-1].value
     assert list(table["policy"]) == ["quarantine by relay_screen"] and table["session"].iloc[0] == "s1"

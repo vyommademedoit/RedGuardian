@@ -1,6 +1,6 @@
 # Architecture
 
-Logical design from PRD §8, as implemented. Status: **Phase 5** — all five surfaces (direct, tool output, RAG, memory, relay), deterministic mock agent, eight defenses with baseline/defended/ablation profiles, adaptive variants, recovery experiments. The Ollama agent adapter is not built yet.
+Logical design from PRD §8, as implemented. Status: **Phase 6** — all five surfaces, a deterministic mock agent and a local Qwen adapter via Ollama, eight defenses with baseline/defended/ablation profiles, adaptive variants, recovery experiments, a multi-view dashboard and Markdown reports. Phase 7 (final validation) remains.
 
 ## Code map
 
@@ -15,15 +15,65 @@ Logical design from PRD §8, as implemented. Status: **Phase 5** — all five su
 | `src/harness/memory.py` | `MemoryStore` on `memory_entries`: append, retrieve, quarantine, delete (soft), reset, per namespace | FR-03 D |
 | `src/harness/retrieval.py` | Paragraph chunking, `hash`/`ollama` embedders, per-run Chroma `Corpus` with search and drop | FR-03 B |
 | `src/harness/mock_agent.py` | Deterministic scripted agent (`mock-vulnerable` / `mock-safe`) | FR-01 |
+| `src/harness/ollama_agent.py` | `OllamaAgent`: Qwen via Ollama `/api/chat` with native tool calls (text `<tool_call>` fallback); temperature/seed/num_ctx recorded; errors → `AgentUnavailable` / `AgentTimeout` / `MalformedResponse` | FR-01 |
+| `src/harness/reporting.py` | Read-side analysis: runs + latest evaluations, metrics per profile, comparisons, outcome labels, NetworkX attack-path graph, FR-12 Markdown report; excludes recovery setup runs from metrics | FR-10, FR-12 |
 | `src/harness/policy.py` | `Policy` (most restrictive wins), `SecretEgressDefense` (tool calls), `RetrievalScreenDefense` (retrieved chunks), `MemoryScreenDefense` (memory write + read), `RelayScreenDefense` (relay messages), `InputScreenDefense`, `DestinationAllowlistDefense`, `TaintGuardDefense`, `OutputGuardDefense`; `DEFENSES` and generated ablation `PROFILES` | FR-05, FR-06 |
 | `src/harness/runner.py` | `run_scenario`: seed → sessions × loop (propose → decide → execute) → events → evaluate → persist | FR-08 |
 | `src/harness/evaluator.py` | `DeterministicEvaluator` over stored events | FR-09 |
-| `scripts/run_experiment.py` | CLI: scenarios × profiles, recovery experiments, per-run verdicts and a Markdown comparison table (`--report`) | FR-08, §11 |
-| `dashboard/app.py` | Streamlit run list + per-run timeline (reads storage only, binds to localhost) | FR-10 |
+| `scripts/run_experiment.py` | CLI: scenarios × profiles × repeats, `--agent mock|ollama`, recovery experiments, per-run verdicts, full report (`--report`) | FR-08, §11 |
+| `scripts/make_report.py` | FR-12 Markdown report for any stored experiment | FR-12 |
+| `dashboard/app.py` | Streamlit views: overview, attack library, run explorer (timeline + Plotly attack path), comparison, ablation heatmap, evidence search, export (CSV/JSON/Markdown). Reads storage only, never runs the agent, binds to localhost | FR-10 |
 | `attacks/schema.json` | Generated from `AttackScenario` — do not hand-edit (`uv run python scripts/export_schema.py`) | FR-02 |
 | `attacks/<surface>/<ID>.json` | Scenario definitions; file name = `attack_id` | §10 |
 
 Modules stay flat until a package needs more than one file; then each becomes the PRD §8.2 sub-package (`harness/agents/`, `harness/tools/`, …).
+
+## Component diagram (final)
+
+```mermaid
+flowchart LR
+    subgraph Inputs
+        A[attacks/*.json<br/>scenarios + benign controls]
+        F[sandbox fixtures<br/>inbox, knowledge base, secrets]
+    end
+    subgraph Harness["Experiment runner (run_scenario)"]
+        R[Runner<br/>sessions × steps]
+        AG{{AgentAdapter<br/>MockAgent / OllamaAgent}}
+        P[Policy middleware<br/>8 defenses, most restrictive wins]
+        S[Sandbox tools<br/>inert; schema-validated args]
+        M[(Memory store<br/>memory_entries)]
+        C[(ChromaDB<br/>per-run collection)]
+        RL[Relay channel<br/>ops-agent]
+    end
+    subgraph Evidence
+        E[(Events<br/>append-only)]
+        EV[Deterministic evaluator]
+        MT[Metrics]
+    end
+    subgraph Read side
+        RP[reporting.py<br/>attack path, comparisons, report]
+        D[Streamlit dashboard]
+        V[verify_metrics.py]
+    end
+    O[(Ollama<br/>qwen2.5:7b)]
+    A --> R
+    F --> S
+    R <--> AG
+    AG -. local HTTP .-> O
+    R -->|proposed call / content| P
+    P -->|allow| S
+    S --> C
+    S --> M
+    S --> RL
+    R -->|every boundary crossing| E
+    E --> EV --> MT
+    E --> RP
+    MT --> RP --> D
+    E --> V
+    MT --> V
+```
+
+Storage: MySQL when `MYSQL_URL` is set (schema v1, `db/schema_v1.mysql.sql`), otherwise the same tables in SQLite. Nothing in the read side writes runs; nothing in the harness reaches beyond `localhost`.
 
 ## Run flow
 

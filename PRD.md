@@ -1215,58 +1215,58 @@ demonstrably working.
 
 ## 13.1 Core runtime
 
--   [ ] The project starts locally using documented setup instructions.
--   [ ] The mock agent runs without Ollama.
--   [ ] The local Qwen/Ollama adapter can be selected when available.
--   [ ] The agent can complete a benign task using at least one
+-   [x] The project starts locally using documented setup instructions.
+-   [x] The mock agent runs without Ollama.
+-   [x] The local Qwen/Ollama adapter can be selected when available.
+-   [x] The agent can complete a benign task using at least one
     sandboxed tool.
 
 ## 13.2 Attack execution
 
--   [ ] At least one valid attack scenario exists for each of the five
+-   [x] At least one valid attack scenario exists for each of the five
     agreed surfaces.
--   [ ] Attack definitions are loaded from JSON and validated.
--   [ ] The runner supports single and batch runs.
--   [ ] Each run records its attack, model, configuration, and initial
+-   [x] Attack definitions are loaded from JSON and validated.
+-   [x] The runner supports single and batch runs.
+-   [x] Each run records its attack, model, configuration, and initial
     state.
 
 ## 13.3 Safety and defenses
 
--   [ ] Synthetic secrets are used throughout.
--   [ ] Tools cannot access arbitrary host resources or external
+-   [x] Synthetic secrets are used throughout.
+-   [x] Tools cannot access arbitrary host resources or external
     networks.
--   [ ] Tool permissions are enforced outside the LLM.
--   [ ] At least one defense can block an unauthorized simulated action.
--   [ ] Defense decisions and reasons are logged.
--   [ ] Defenses can be individually enabled/disabled for ablations.
+-   [x] Tool permissions are enforced outside the LLM.
+-   [x] At least one defense can block an unauthorized simulated action.
+-   [x] Defense decisions and reasons are logged.
+-   [x] Defenses can be individually enabled/disabled for ablations.
 
 ## 13.4 Evidence and metrics
 
--   [ ] Events are persisted and linked to a run.
--   [ ] Canary propagation is tracked through applicable stages.
--   [ ] The evaluator computes ASR, ISR, secret leakage, unauthorized
+-   [x] Events are persisted and linked to a run.
+-   [x] Canary propagation is tracked through applicable stages.
+-   [x] The evaluator computes ASR, ISR, secret leakage, unauthorized
     tool rates, defense block rate, false refusal, benign utility, and
     recovery success where applicable.
--   [ ] Metric denominators and raw counts are visible.
--   [ ] Failed/incomplete runs are not silently counted as defended
+-   [x] Metric denominators and raw counts are visible.
+-   [x] Failed/incomplete runs are not silently counted as defended
     runs.
 
 ## 13.5 Visualization
 
--   [ ] The dashboard shows aggregate results.
--   [ ] A user can select a run and inspect its timeline.
--   [ ] An attack path/provenance graph is available.
--   [ ] Baseline and defended runs can be compared.
--   [ ] Aggregate findings can be traced to underlying events.
+-   [x] The dashboard shows aggregate results.
+-   [x] A user can select a run and inspect its timeline.
+-   [x] An attack path/provenance graph is available.
+-   [x] Baseline and defended runs can be compared.
+-   [x] Aggregate findings can be traced to underlying events.
 
 ## 13.6 Reproducibility and documentation
 
--   [ ] A reset/seed workflow exists.
--   [ ] A repeatable experiment command exists.
--   [ ] Unit and integration tests cover critical boundaries.
--   [ ] README, architecture, threat model, metrics, and mitigation
+-   [x] A reset/seed workflow exists.
+-   [x] A repeatable experiment command exists.
+-   [x] Unit and integration tests cover critical boundaries.
+-   [x] README, architecture, threat model, metrics, and mitigation
     guide are present.
--   [ ] The report clearly states limitations and does not claim formal
+-   [x] The report clearly states limitations and does not claim formal
     security guarantees.
 
 ------------------------------------------------------------------------
@@ -1370,29 +1370,29 @@ attribution --- `RAG-001`/`BENIGN-002`, `harness/retrieval.py`,
 
 ## Phase 6 --- Dashboard and reporting
 
--   [ ] Build overview metrics page.
--   [ ] Build attack library page.
--   [ ] Build run explorer and event timeline.
--   [ ] Build attack-path graph using NetworkX/Plotly.
--   [ ] Build baseline-versus-defended comparisons.
--   [ ] Build defense ablation view.
--   [ ] Add evidence search/filtering.
--   [ ] Add JSON/CSV export and Markdown report generation.
--   [ ] Improve error states and dashboard usability.
+-   [x] Build overview metrics page.
+-   [x] Build attack library page.
+-   [x] Build run explorer and event timeline.
+-   [x] Build attack-path graph using NetworkX/Plotly.
+-   [x] Build baseline-versus-defended comparisons.
+-   [x] Build defense ablation view.
+-   [x] Add evidence search/filtering.
+-   [x] Add JSON/CSV export and Markdown report generation.
+-   [x] Improve error states and dashboard usability.
 
 **Deliverable:** demonstrable visualization-led security dashboard.
 
 ## Phase 7 --- Final validation and project handoff
 
--   [ ] Run the full test suite.
--   [ ] Run the full benchmark from a clean seeded state.
--   [ ] Verify all metrics from raw events.
--   [ ] Verify recovery and reset behavior.
--   [ ] Document machine specifications and model configuration.
--   [ ] Document known limitations and untested cases.
--   [ ] Prepare final architecture diagram and demonstration workflow.
--   [ ] Prepare final benchmark and mitigation report.
--   [ ] Tag a reproducible project version.
+-   [x] Run the full test suite.
+-   [x] Run the full benchmark from a clean seeded state.
+-   [x] Verify all metrics from raw events.
+-   [x] Verify recovery and reset behavior.
+-   [x] Document machine specifications and model configuration.
+-   [x] Document known limitations and untested cases.
+-   [x] Prepare final architecture diagram and demonstration workflow.
+-   [x] Prepare final benchmark and mitigation report.
+-   [x] Tag a reproducible project version.
 
 **Deliverable:** reproducible local project suitable for demonstration
 and academic review.

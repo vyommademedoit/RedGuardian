@@ -97,6 +97,8 @@ def test_dashboard_renders_runs(tmp_path, monkeypatch):
     eng = storage.connect(url)
     run(eng, "TOOL-001", "only_secret_egress")
     monkeypatch.setenv("MYSQL_URL", url)
-    at = AppTest.from_file(str(ROOT / "dashboard" / "app.py"), default_timeout=30).run()
+    at = AppTest.from_file(str(ROOT / "dashboard" / "app.py"), default_timeout=30)
+    at.session_state["view"] = "Run explorer"
+    at.run()
     assert not at.exception
     assert any("executed (blocked)" in m.value and "secret_egress" in m.value for m in at.markdown)
