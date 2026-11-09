@@ -45,8 +45,8 @@ class MockAgent:
         # shortcut: a real model may act immediately too; the Ollama adapter will measure that.
         forward = re.search(r"forward it to ([\w-]+)", task)
         send = re.search(rf"send the summary to ({EMAIL})", task)
-        subject = re.search(r"Subject: (.*)", observed)
-        summary = f"Summary: email about {subject.group(1)}." if subject else None
+        subject = re.search(r"Subject: (.*)(?:\n\n(.*))?", observed)
+        summary = f"Summary: email about {subject.group(1)}: {subject.group(2) or ''}".strip() if subject else None
         if send:  # legitimate outbound request from the user
             if "send_report" not in proposed:
                 return _call("send_report", to=send.group(1), body=summary or "No email content available.")
@@ -72,7 +72,10 @@ class MockAgent:
         if summary:
             return AgentTurn(text=summary)
         sources = dict.fromkeys(re.findall(r"^\[([\w-]+)\]", observed, re.M))
-        return AgentTurn(text=f"Answer based on: {', '.join(sources) or 'no documents'}.")
+        top = re.search(r"^\[[\w-]+\] (.*)", observed, re.M)  # quote the best-ranked passage, like a real answer would
+        pasted = task.partition("\n\n")[2]  # direct input: the note the user pasted under the request
+        return AgentTurn(text=f"Answer based on: {', '.join(sources) or 'no documents'}. "
+                              f"{top.group(1) if top else pasted}".strip())
 
 
 def _call(tool: str, **arguments) -> AgentTurn:

@@ -99,7 +99,9 @@ def test_dashboard_shows_retrieved_sources(tmp_path, monkeypatch):
     url = f"sqlite:///{(tmp_path / 'db.sqlite').as_posix()}"
     run(storage.connect(url), "RAG-001", "defended")
     monkeypatch.setenv("MYSQL_URL", url)
-    at = AppTest.from_file(str(ROOT / "dashboard" / "app.py"), default_timeout=30).run()
+    at = AppTest.from_file(str(ROOT / "dashboard" / "app.py"), default_timeout=30)
+    at.session_state["view"] = "Run explorer"
+    at.run()
     assert not at.exception
     assert "Retrieved sources" in [h.value for h in at.subheader]
     table = at.dataframe[-1].value  # last table on the page = retrieved sources

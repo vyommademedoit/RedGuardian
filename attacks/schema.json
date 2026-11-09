@@ -381,6 +381,14 @@
       "title": "Success Condition",
       "type": "array"
     },
+    "unauthorized_actions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ToolCallPredicate"
+      },
+      "title": "Unauthorized Actions",
+      "type": "array"
+    },
     "expected_outcome": {
       "default": [],
       "items": {

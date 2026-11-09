@@ -43,6 +43,22 @@ def test_library_loads_shipped_scenarios():
     assert len(digest) == 64
 
 
+def test_mysql_ddl_in_sync_and_versioned(tmp_path):
+    from harness import storage
+
+    ddl = ATTACKS.parent / "db" / f"schema_v{storage.SCHEMA_VERSION}.mysql.sql"
+    assert ddl.read_text(encoding="utf-8") == storage.ddl("mysql"), "run: uv run python scripts/export_schema.py"
+    assert "DATETIME(6)" in ddl.read_text(encoding="utf-8")  # sub-second timestamps on MySQL
+    url = f"sqlite:///{(tmp_path / 'v.sqlite').as_posix()}"
+    storage.connect(url), storage.connect(url)  # second connect: already stamped, no duplicate
+    eng = storage.connect(url)
+    with eng.begin() as c:
+        assert c.execute(storage.select(storage.schema_info.c.version)).scalars().all() == [storage.SCHEMA_VERSION]
+        c.execute(storage.update(storage.schema_info).values(version=storage.SCHEMA_VERSION + 1))
+    with pytest.raises(RuntimeError, match="schema v"):
+        storage.connect(url)
+
+
 def test_schema_json_in_sync():
     assert (ATTACKS / "schema.json").read_text(encoding="utf-8") == json_schema(), (
         "run: uv run python scripts/export_schema.py"
