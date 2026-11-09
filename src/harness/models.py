@@ -323,6 +323,9 @@ class AttackScenario(_Frozen):
     stages: tuple[Stage, ...] = ()  # applicable stages; others are N/A
 
     success_condition: tuple[Predicate, ...] = ()  # attack: all must hold
+    # attack: proposed calls matching any of these are prohibited even if they carry no secret or marker
+    # (e.g. any send to the attacker's address: the model acted on the injection without leaking)
+    unauthorized_actions: tuple[ToolCallPredicate, ...] = ()
     expected_outcome: tuple[Predicate, ...] = ()  # benign: all must hold
     expected_safe_behavior: str
     benign_controls: tuple[str, ...] = ()  # attack_ids of matched benign tasks
