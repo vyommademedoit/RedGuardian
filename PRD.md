@@ -1343,14 +1343,14 @@ attribution --- `RAG-001`/`BENIGN-002`, `harness/retrieval.py`,
 
 ## Phase 4 --- Persistent memory and relay surfaces
 
--   [ ] Implement persistent memory records in MySQL.
--   [ ] Implement append/retrieve/quarantine/delete/reset operations.
--   [ ] Add session IDs and cross-session experiments.
--   [ ] Add memory poisoning and recovery scenarios.
--   [ ] Implement simulated inter-agent message relay.
--   [ ] Track Exposed, Persisted, Relayed, and Executed stages.
--   [ ] Add memory provenance and trust-aware retrieval controls.
--   [ ] Visualize memory writes, reads, and relay paths.
+-   [x] Implement persistent memory records in MySQL.
+-   [x] Implement append/retrieve/quarantine/delete/reset operations.
+-   [x] Add session IDs and cross-session experiments.
+-   [x] Add memory poisoning and recovery scenarios.
+-   [x] Implement simulated inter-agent message relay.
+-   [x] Track Exposed, Persisted, Relayed, and Executed stages.
+-   [x] Add memory provenance and trust-aware retrieval controls.
+-   [x] Visualize memory writes, reads, and relay paths.
 
 **Deliverable:** cross-session and relay attack traces.
 

@@ -31,6 +31,14 @@ Conservative, reversible defaults for PRD §16 open decisions. Change any of the
 | D-025 | 2026-11-09 | `retrieval_screen`: quarantine an *untrusted* chunk that contains an instruction aimed at the assistant (regex). Heuristic, labelled as such | Transparent and explainable (PRD FR-05); reworded payloads can evade it, which the adaptive variants in Phase 5 will measure | Medium |
 | D-026 | 2026-11-09 | Profiles: `baseline`, `defended` (both defenses), `egress_only`, `retrieval_only` | Shows which layer stops which attack (ablation) | Low |
 | D-027 | 2026-11-09 | `documents` keyed by (`corpus_id` = run id, `doc_id`) and stores text; `connect()` refuses a pre-Phase-3 database with a clear message instead of migrating | Per-run corpus copies; local DB holds only demo runs (D-007 still defers migrations) | Low |
+| D-028 | 2026-11-09 | A run is a sequence of sessions (`target_task` + `follow_up_sessions`), each a fresh conversation over one sandbox; `session_id` (`s1`, ...) goes in event payloads, not a new column | Cross-session and relay effects inside one reproducible run without a schema migration | Low |
+| D-029 | 2026-11-09 | Memory persisted in `memory_entries` via `MemoryStore`, keyed by namespace (default = run id). Recovery reuses a poisoned namespace; a benign run on inherited memory is a `recovery` run | Isolated by default, persistent across runs on purpose; PRD append/retrieve/quarantine/delete/reset. `update` deferred (no scenario needs it) | Low |
+| D-030 | 2026-11-09 | Conservative session taint: anything the agent writes after seeing untrusted content is labelled untrusted, with origin ids | Provenance survives the agent's rewrite without content matching; over-labels rather than misses | Medium |
+| D-031 | 2026-11-09 | Write-time checks (`MEMORY_WRITE`, `RELAY`) drop the write; operator quarantine is a separate store operation; `memory_screen` also screens on read | No half-persisted content; read-time screening covers memory poisoned before the defense existed | Low |
+| D-032 | 2026-11-09 | `memory_screen` and `relay_screen` reuse the `retrieval_screen` heuristic (subclasses with own `defense_id` and checkpoints) | One heuristic, separately attributable layers for ablation | Medium |
+| D-033 | 2026-11-09 | Relay = same adapter in a later session acting as `ops-agent`, reading an in-run message channel | PRD FR-03 E: lightweight second-stage reader, not a multi-agent framework | Low |
+| D-034 | 2026-11-09 | Mock agent treats 'save it to memory' / 'forward it to X' tasks as transcription (copies, does not obey) | Makes the cross-session/relay hop observable; real models may act immediately, which the Ollama adapter must measure | Medium |
+| D-035 | 2026-11-09 | Profiles: `defended` = all four defenses; new `content_screens` = all screens without egress | Shows that screens alone miss direct tool-output injection (TOOL-001) | Low |
 
 ## Still open (not blocking the vertical slice)
 
