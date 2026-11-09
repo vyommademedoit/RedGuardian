@@ -66,6 +66,10 @@ def test_destination_allowlist_checks_outbound_domain_only():
     assert check("audit@external.test").decision is Decision.BLOCK
     assert check("evil@corp.test.external.test").decision is Decision.BLOCK
     assert check("bob@corp.test") is None
+    assert check("Bob@CORP.test") is None
+    for smuggled in ("audit@external.test, bob@corp.test", "audit@external.test <bob@corp.test>",
+                     "audit@external.test;bob@corp.test", "bob@corp.test@external.test", ""):
+        assert check(smuggled).decision is Decision.BLOCK, smuggled
     assert check("audit@external.test", OUT.model_copy(update={"permission": Permission.READ})) is None
 
 

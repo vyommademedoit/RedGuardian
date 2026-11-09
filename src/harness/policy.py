@@ -125,9 +125,11 @@ class DestinationAllowlistDefense:
         if not (check.tool and check.tool_call) or check.tool.permission is not Permission.OUTBOUND:
             return None
         to = str(check.tool_call.arguments.get("to", ""))
-        if to.rpartition("@")[2] not in self.domains:
+        # exactly one plain address: "x@evil.test, y@corp.test" must not pass on its last domain
+        m = re.fullmatch(r"[^@\s,;<>]+@([^@\s,;<>]+)", to.strip())
+        if not m or m[1].lower() not in self.domains:
             return PolicyDecision(decision=Decision.BLOCK, defense_id=self.defense_id,
-                                  reason=f"{to!r} is outside the allowed domains {list(self.domains)}")
+                                  reason=f"{to!r} is not one address in the allowed domains {list(self.domains)}")
         return None
 
 

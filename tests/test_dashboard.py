@@ -61,6 +61,16 @@ def test_sufficient_layers(db):
     assert layers["TOOL-001"] == ["secret_egress", "taint_guard"] and layers["TOOL-002"] == []
 
 
+def test_sufficient_layers_counts_unauthorized_actions_and_skips_harmless_attacks():
+    def row(attack, profile, success=False, ran=0):
+        return {"kind": "attack", "attack_id": attack, "defense_profile": profile, "ev": {
+            "valid": True, "attack_success": success, "secret_leaked": False, "unauthorized_executed": ran}}
+    rows = [row("A", "baseline", ran=1), row("A", "only_x", ran=1), row("A", "only_y"),
+            row("B", "baseline"), row("B", "only_x")]  # B never did anything: nothing to stop
+    assert reporting.sufficient_layers(rows) == {"A": ["y"]}
+    assert reporting.sufficient_layers(rows + [row("A", "only_y", success=True)]) == {"A": []}  # must hold every repeat
+
+
 def test_attack_path_memory_hop_and_blocked_send(db):
     _, engine, _ = db
     g = reporting.attack_path(run_scenario(*LIB["MEM-001"], MockAgent(), "baseline", engine).events)
@@ -128,3 +138,15 @@ def test_recovery_setup_runs_are_not_measured():
     assert by["baseline"]["attack_success_rate"].denominator == 1  # the setup run is not a baseline measurement
     assert by["defended"]["recovery_success"].denominator == 1
     assert reporting.outcome(next(r for r in rows if r["run_id"] == setup.run_id)) == "recovery setup (not measured)"
+
+
+def test_setup_run_without_recovery_is_not_measured():
+    # the model wrote no memory, so run_experiment skips recovery: the setup run must still be excluded
+    engine, ns = storage.connect("sqlite://"), f"{reporting.SETUP_PREFIX}{new_id()}"
+    run_scenario(*LIB["MEM-001"], MockAgent(), "baseline", engine, memory_namespace=ns)
+    [row] = reporting.run_rows(engine)
+    assert row["setup"] and reporting.metrics_by_profile([row]) == {}
+    # the recovery run on that memory shares the namespace but is a measurement
+    run_scenario(*LIB["BENIGN-004"], MockAgent(), "defended", engine, memory_namespace=ns)
+    by = reporting.metrics_by_profile(reporting.run_rows(engine))
+    assert list(by) == ["defended"] and by["defended"]["recovery_success"].denominator == 1

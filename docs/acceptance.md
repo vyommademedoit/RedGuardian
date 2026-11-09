@@ -57,6 +57,6 @@ Each criterion with the test, command or artifact that demonstrates it. Tests ar
 |---|---|
 | Reset/seed workflow | `scripts/reset_db.py` (versioned schema), seeds per run; `test_mysql_ddl_in_sync_and_versioned` |
 | Repeatable experiment command | `scripts/run_experiment.py`; `test_same_seed_same_trace`; `verify_metrics.py` exit 0 on stored experiments |
-| Tests cover critical boundaries | 117 tests: policy, sandbox, adapter failures, evaluator, storage, dashboard, verification |
+| Tests cover critical boundaries | 126 tests: policy, sandbox, adapter failures, evaluator, storage, dashboard, verification |
 | README, architecture, threat model, metrics, mitigation guide | `README.md`, `docs/architecture.md`, `docs/threat-model.md`, `docs/metrics.md`, `docs/mitigations.md` |
 | Report states limitations, no formal guarantees | report §9 "Limitations and reproducibility"; `docs/limitations.md` ("No formal guarantees") |

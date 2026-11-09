@@ -37,7 +37,7 @@ def test_library_loads_shipped_scenarios():
     lib = load_library(ATTACKS)
     assert list(lib) == [  # sorted, deterministic
         "BENIGN-001", "BENIGN-001b", "BENIGN-002", "BENIGN-003", "BENIGN-004", "BENIGN-005", "BENIGN-006", "BENIGN-007",
-        "BENIGN-008", "DIR-001", "MEM-001", "MEM-001b", "RAG-001", "RAG-001b", "RELAY-001", "TOOL-001", "TOOL-001b", "TOOL-001c", "TOOL-002"]
+        "BENIGN-008", "BENIGN-009", "DIR-001", "MEM-001", "MEM-001b", "MEM-002", "RAG-001", "RAG-001b", "RELAY-001", "TOOL-001", "TOOL-001b", "TOOL-001c", "TOOL-002"]
     scenario, digest = lib["TOOL-001"]
     assert scenario.stages == (Stage.EXPOSED, Stage.EXECUTED)
     assert len(digest) == 64

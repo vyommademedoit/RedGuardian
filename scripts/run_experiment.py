@@ -85,7 +85,8 @@ for profile in args.profiles:
             scenario = library[attack_id][0]
             if scenario.kind != "attack" or scenario.surface.value != "memory":
                 continue
-            poisoned = run(attack_id, "baseline", seed).run
+            # "setup-" namespace marks it as setup even if recovery is skipped (reporting.run_rows)
+            poisoned = run(attack_id, "baseline", seed, memory_namespace=f"{reporting.SETUP_PREFIX}{new_id()}").run
             quarantined = MemoryStore(engine, poisoned.memory_state_id).quarantine(run_id=poisoned.run_id, trust="untrusted")
             if not quarantined:  # nothing was poisoned: no compromise to recover from, so no recovery attempt
                 print(f"  recovery {attack_id} seed={seed}: skipped, poisoning run wrote no untrusted memory")

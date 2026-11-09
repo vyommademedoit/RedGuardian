@@ -48,7 +48,7 @@ Observed speed on this machine: ~0.9 s per warm model call, ~7.5 s per run.
 
 ```bash
 uv sync
-uv run pytest                                                      # 117 passed, 1 skipped (live model test)
+uv run pytest                                                      # 126 passed, 1 skipped (live model test)
 uv run python scripts/reset_db.py --yes                            # empty, versioned schema (MySQL if MYSQL_URL is set)
 uv run python scripts/run_experiment.py --report docs/results/mock_benchmark.md
 uv run python scripts/run_experiment.py --agent ollama --report docs/results/ollama_benchmark.md
@@ -60,8 +60,8 @@ uv run streamlit run dashboard/app.py
 
 | Report | Agent | Backend | Verification |
 |---|---|---|---|
-| `results/mock_benchmark_mysql.md` | mock | MySQL 8.0.45, fresh schema v1 | `verify_metrics.py`: 1926 checks, 0 problems |
-| `results/mock_benchmark.md` | mock | SQLite, fresh file | 1926 checks, 0 problems; metrics, stages and outcomes identical to the MySQL run |
-| `results/ollama_qwen2.5-7b_benchmark.md` | qwen2.5:7b | SQLite, fresh file | 1926 checks, 0 problems |
+| `results/mock_benchmark_mysql.md` | mock | MySQL 8.0.45, schema v1 (new experiment next to earlier ones) | evaluator 0.4.0; `verify_metrics.py`: 2214 checks, 0 problems |
+| `results/mock_benchmark.md` | mock | SQLite, fresh file (`.data/mock_benchmark.db`) | evaluator 0.4.0; 2214 checks, 0 problems; every table identical to the MySQL run and to the earlier 0.3.0 run |
+| `results/ollama_qwen2.5-7b_benchmark.md` | qwen2.5:7b | MySQL 8.0.45 (same database as the mock run) | stored by evaluator 0.3.0, re-evaluated by 0.4.0 with no differences; 2214 checks, 0 problems; 9 invalid `MEM-002` runs (Ollama timeouts) excluded |
 
 `reset_db.py` without `--yes` only prints what it would drop. MySQL setup: `scripts/mysql_setup.sql` (dedicated least-privilege user), then `MYSQL_URL=mysql+pymysql://redguardian:<password>@localhost:3306/redguardian` in `.env`.
