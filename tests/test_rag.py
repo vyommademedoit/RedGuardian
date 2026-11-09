@@ -52,17 +52,17 @@ def test_retrieval_screen_quarantines_before_exposure(engine):
 
 
 def test_egress_layer_alone_still_stops_the_rag_attack(engine):
-    e = run(engine, "RAG-001", "egress_only").evaluation
+    e = run(engine, "RAG-001", "only_secret_egress").evaluation
     assert e.injected and e.unauthorized_attempts == 1 and e.unauthorized_blocked == 1
     assert not e.secret_leaked and e.blocking_defenses == ("secret_egress",)
 
 
 def test_retrieval_screen_does_not_cover_tool_outputs(engine):
     # honest ablation: the screen only sees retrieval, so the inbox attack still lands
-    assert run(engine, "TOOL-001", "retrieval_only").evaluation.attack_success
+    assert run(engine, "TOOL-001", "only_retrieval_screen").evaluation.attack_success
 
 
-@pytest.mark.parametrize("profile", ["baseline", "defended", "egress_only", "retrieval_only"])
+@pytest.mark.parametrize("profile", ["baseline", "defended", "only_secret_egress", "only_retrieval_screen"])
 def test_rag_benign_control_keeps_utility(engine, profile):
     e = run(engine, "BENIGN-002", profile).evaluation
     assert e.task_completed and not e.refused_or_blocked
