@@ -117,6 +117,7 @@ class RunKind(StrEnum):
 class EventType(StrEnum):
     RUN_STARTED = "run_started"
     RUN_FINISHED = "run_finished"
+    SESSION_STARTED = "session_started"
     CONTENT_EXPOSED = "content_exposed"
     RETRIEVAL = "retrieval"
     MEMORY_WRITE = "memory_write"
@@ -194,11 +195,24 @@ class ToolCall(_Frozen):
     arguments: dict[str, Any] = {}
 
 
+class RetrievedChunk(_Frozen):
+    """One retrieved chunk with its source, score and rank (PRD §9.1)."""
+
+    chunk_id: str
+    doc_id: str
+    rank: int
+    score: float
+    trust: Trust
+    source: str
+    text: str
+
+
 class ToolResult(_Frozen):
     call_id: str
     content: str
     provenance: Provenance
     error: str | None = None
+    retrieved: tuple[RetrievedChunk, ...] = ()  # set by retrieval tools; screened by the runner
 
 
 class Message(_Frozen):
@@ -273,6 +287,15 @@ class Injection(_Frozen):
     payload: str  # must contain {marker}
 
 
+class SessionSpec(_Frozen):
+    """A follow-up conversation in the same run: fresh context, shared sandbox state
+    (memory, relay channel). ``agent`` names who acts; anything but "assistant" is a
+    simulated second-stage reader for the relay surface (FR-03 E)."""
+
+    task: str
+    agent: str = Field(default="assistant", pattern=r"^[a-z][a-z0-9-]*$")
+
+
 class AttackScenario(_Frozen):
     """One versioned attack or benign-control definition, loaded from JSON."""
 
@@ -293,7 +316,8 @@ class AttackScenario(_Frozen):
     initial_state: tuple[str, ...] = ()  # named fixtures to seed before the run
     cleanup: tuple[str, ...] = ()  # named reset procedures after the run
 
-    target_task: str  # the user's legitimate instruction
+    target_task: str  # the user's legitimate instruction (session 1)
+    follow_up_sessions: tuple[SessionSpec, ...] = ()  # sessions 2..n, for cross-session/relay effects
     injection: Injection | None = None
     secret: SecretSpec | None = None
     stages: tuple[Stage, ...] = ()  # applicable stages; others are N/A

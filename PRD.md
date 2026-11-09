@@ -1310,45 +1310,47 @@ see `src/harness/`, `attacks/`, `docs/architecture.md`,
 
 ## Phase 2 --- First end-to-end vertical slice
 
--   [ ] Implement deterministic mock agent.
--   [ ] Implement one benign task.
--   [ ] Implement one sandboxed read tool and one simulated outbound
+-   [x] Implement deterministic mock agent.
+-   [x] Implement one benign task.
+-   [x] Implement one sandboxed read tool and one simulated outbound
     tool.
--   [ ] Implement one direct-input or tool-output attack.
--   [ ] Implement a minimal policy middleware that blocks an
+-   [x] Implement one direct-input or tool-output attack.
+-   [x] Implement a minimal policy middleware that blocks an
     unauthorized action.
--   [ ] Implement synthetic canary generation and event logging.
--   [ ] Implement evaluator for one attack and one benign task.
--   [ ] Persist the run and events.
--   [ ] Display the run timeline in a minimal Streamlit page.
--   [ ] Add unit and integration tests.
+-   [x] Implement synthetic canary generation and event logging.
+-   [x] Implement evaluator for one attack and one benign task.
+-   [x] Persist the run and events. (Verified on SQLite; MySQL pending
+    service start.)
+-   [x] Display the run timeline in a minimal Streamlit page.
+-   [x] Add unit and integration tests.
 
 **Deliverable:** a repeatable baseline-versus-defended demo with an
-inspectable trace.
+inspectable trace — `scripts/run_experiment.py`, `dashboard/app.py`.
 
 ## Phase 3 --- RAG surface
 
--   [ ] Add document ingestion and chunk metadata.
--   [ ] Integrate ChromaDB.
--   [ ] Implement clean and poisoned document fixtures.
--   [ ] Record retrieved chunks, scores, and provenance.
--   [ ] Add RAG poisoning scenarios and benign controls.
--   [ ] Add retrieval trust/provenance defense options.
--   [ ] Add retrieval/source visualization and corpus reset.
+-   [x] Add document ingestion and chunk metadata.
+-   [x] Integrate ChromaDB.
+-   [x] Implement clean and poisoned document fixtures.
+-   [x] Record retrieved chunks, scores, and provenance.
+-   [x] Add RAG poisoning scenarios and benign controls.
+-   [x] Add retrieval trust/provenance defense options.
+-   [x] Add retrieval/source visualization and corpus reset.
 
 **Deliverable:** RAG attack and defense experiments with source
-attribution.
+attribution --- `RAG-001`/`BENIGN-002`, `harness/retrieval.py`,
+`retrieval_screen` defense, "Retrieved sources" dashboard table.
 
 ## Phase 4 --- Persistent memory and relay surfaces
 
--   [ ] Implement persistent memory records in MySQL.
--   [ ] Implement append/retrieve/quarantine/delete/reset operations.
--   [ ] Add session IDs and cross-session experiments.
--   [ ] Add memory poisoning and recovery scenarios.
--   [ ] Implement simulated inter-agent message relay.
--   [ ] Track Exposed, Persisted, Relayed, and Executed stages.
--   [ ] Add memory provenance and trust-aware retrieval controls.
--   [ ] Visualize memory writes, reads, and relay paths.
+-   [x] Implement persistent memory records in MySQL.
+-   [x] Implement append/retrieve/quarantine/delete/reset operations.
+-   [x] Add session IDs and cross-session experiments.
+-   [x] Add memory poisoning and recovery scenarios.
+-   [x] Implement simulated inter-agent message relay.
+-   [x] Track Exposed, Persisted, Relayed, and Executed stages.
+-   [x] Add memory provenance and trust-aware retrieval controls.
+-   [x] Visualize memory writes, reads, and relay paths.
 
 **Deliverable:** cross-session and relay attack traces.
 
