@@ -22,6 +22,7 @@ from harness.policy import PROFILES
 HEADLINE = ["attack_success_rate", "injection_success_rate", "secret_leakage_rate", "unauthorized_tool_attempt_rate",
             "unauthorized_tool_execution_rate", "defense_block_rate", "benign_task_utility", "false_refusal_rate",
             "recovery_success", "invalid_runs"]
+SETUP_PREFIX = "setup-"  # memory namespace of a recovery setup (poisoning) run
 LOWER_IS_BETTER = {"attack_success_rate", "injection_success_rate", "secret_leakage_rate", "unauthorized_tool_attempt_rate",
                    "unauthorized_tool_execution_rate", "false_refusal_rate", "invalid_runs"}
 
@@ -52,8 +53,11 @@ def run_rows(engine: Engine, experiment_id: str | None = None) -> list[dict]:
                 latest[r.run_id] = (r.evaluated_at, r.result)
     # Recovery setup: the poisoning run whose memory a recovery run reused. It prepares state; it is not a
     # measurement of its profile, so analysis skips it (``measured``) while the explorer can still show it.
+    # Marked by its "setup-" memory namespace; older runs only by a recovery run that reused their memory.
     setup = {r["memory_state_id"] for r in runs if r["kind"] == "recovery"}
-    return [{**r, "ev": latest.get(r["run_id"], (None, None))[1], "setup": r["run_id"] in setup} for r in runs]
+    return [{**r, "ev": latest.get(r["run_id"], (None, None))[1],
+             "setup": r["run_id"] in setup or (r["kind"] != "recovery"  # recovery runs inherit the setup namespace
+                                                and (r["memory_state_id"] or "").startswith(SETUP_PREFIX))} for r in runs]
 
 
 def measured(rows: Sequence[dict]) -> list[dict]:
@@ -149,16 +153,25 @@ def stage_distribution(rows: Sequence[dict]) -> dict[str, Counter]:
 
 
 def sufficient_layers(rows: Sequence[dict]) -> dict[str, list[str]]:
-    """attack_id -> single defenses (``only_<id>`` profiles) that alone kept it from succeeding."""
-    out: dict[str, set[str]] = defaultdict(set)
-    seen: dict[str, bool] = {}
+    """attack_id -> single defenses (``only_<id>`` profiles) that alone kept it from compromising anything.
+
+    Compromise = succeeded, leaked or ran an unauthorized action. Attacks that never compromised anything
+    are left out: there was nothing for a layer to stop. A layer must hold in every valid run (repeats)."""
+    def compromised(ev: dict) -> bool:
+        return bool(ev["attack_success"] or ev["secret_leaked"] or ev["unauthorized_executed"])
+
+    held: dict[str, dict[str, bool]] = defaultdict(dict)
+    hit: set[str] = set()
     for r in measured(rows):
         if r["kind"] != "attack" or not r["ev"] or not r["ev"]["valid"]:
             continue
-        seen.setdefault(r["attack_id"], False)
-        if r["defense_profile"].startswith("only_") and not r["ev"]["attack_success"]:
-            out[r["attack_id"]].add(r["defense_profile"].removeprefix("only_"))
-    return {a: sorted(out.get(a, ())) for a in sorted(seen)}
+        a, ev = r["attack_id"], r["ev"]
+        if compromised(ev):
+            hit.add(a)
+        if r["defense_profile"].startswith("only_"):
+            d = r["defense_profile"].removeprefix("only_")
+            held[a][d] = held[a].get(d, True) and not compromised(ev)
+    return {a: sorted(d for d, ok in held[a].items() if ok) for a in sorted(hit)}
 
 
 # --------------------------------------------------------------------------- attack path (NetworkX)

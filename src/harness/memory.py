@@ -34,6 +34,17 @@ class MemoryStore:
             return list(c.execute(select(T).where(T.c.namespace == self.namespace, T.c.status == status)
                                   .order_by(T.c.created_at, T.c.memory_id)))
 
+    def update(self, memory_id: str, content: str, **provenance) -> int:
+        """Replace an active entry's content in place, e.g. redact a poisoned sentence. Any provenance
+        columns passed (``trust``, ``source_type``, ``source_id``, ``contains_canary``) are updated too;
+        others keep their original values, so the entry's origin stays auditable."""
+        unknown = set(provenance) - {"trust", "source_type", "source_id", "contains_canary"}
+        if unknown:
+            raise ValueError(f"cannot update {sorted(unknown)}")
+        with self.engine.begin() as c:
+            return c.execute(update(T).where(T.c.namespace == self.namespace, T.c.memory_id == memory_id,
+                                             T.c.status == "active").values(content=content, **provenance)).rowcount
+
     def quarantine(self, **match) -> int:
         """e.g. ``quarantine(run_id=compromised_run)`` or ``quarantine(trust="untrusted")``."""
         return self._set_status("quarantined", match)

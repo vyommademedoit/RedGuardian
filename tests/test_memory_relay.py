@@ -100,7 +100,13 @@ def test_memory_store_operations(engine):
     a = m.append("a", trust="trusted", **kw)
     m.append("b", trust="untrusted", **kw)
     assert m.quarantine(trust="untrusted") == 1 and [r.content for r in m.retrieve()] == ["a"]
+    assert m.update(a, "a (reviewed)", trust="trusted") == 1
+    [row] = m.retrieve()
+    assert (row.content, row.trust, row.source_id, row.memory_id) == ("a (reviewed)", "trusted", "s1", a)  # origin kept
+    with pytest.raises(ValueError):
+        m.update(a, "x", namespace="other")  # identity columns are not updatable
     assert m.delete(memory_id=a) == 1 and m.retrieve() == []
+    assert m.update(a, "gone") == 0  # deleted entries are not resurrected
     assert MemoryStore(engine, "other").retrieve() == []  # namespaces isolated
     assert m.reset() == 2 and m.retrieve("deleted") == []
 
@@ -123,3 +129,12 @@ def test_dashboard_shows_memory_and_relay_path(tmp_path, monkeypatch):
     at.selectbox(key="run_select").select(relay.run.run_id).run()
     table = at.dataframe[-1].value
     assert list(table["policy"]) == ["quarantine by relay_screen"] and table["session"].iloc[0] == "s1"
+
+
+def test_same_session_memory_effect_is_not_stopped_by_memory_defenses(engine):
+    """FR-03 D same-session case: the write is blocked, but the payload is already in context."""
+    r = run(engine, "MEM-002", "baseline")
+    assert r.evaluation.attack_success and stages(r)["s1"] == [Stage.EXPOSED, Stage.PERSISTED, Stage.EXPOSED, Stage.EXECUTED]  # email, write, read-back, send
+    e = run(engine, "MEM-002", "only_memory_screen").evaluation
+    assert e.blocking_defenses == ("memory_screen",) and e.attack_success  # memory screen fired, attack still landed
+    assert not run(engine, "MEM-002", "only_input_screen").evaluation.attack_success

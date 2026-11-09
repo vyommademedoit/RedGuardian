@@ -12,7 +12,7 @@ Logical design from PRD §8, as implemented. Status: **Phase 6** — all five su
 | `src/harness/metrics.py` | Metric formulas and denominators | FR-09 |
 | `src/harness/storage.py` | SQLAlchemy Core tables, `connect()`, run/evaluation writers, `SqlEventLogger` (MySQL via `MYSQL_URL`, else `.data/redguardian.db`) | FR-07, FR-11 |
 | `src/harness/sandbox.py` | Fixtures (inbox, company knowledge base), token generation, payload injection into emails or documents, inert tools `read_inbox`, `read_config`, `search_documents`, `write_memory`, `read_memory`, `relay_message`, `read_messages`, `send_report`; session taint (`origin()`) | FR-04 |
-| `src/harness/memory.py` | `MemoryStore` on `memory_entries`: append, retrieve, quarantine, delete (soft), reset, per namespace | FR-03 D |
+| `src/harness/memory.py` | `MemoryStore` on `memory_entries`: append, retrieve, update (content and trust; origin kept), quarantine, delete (soft), reset, per namespace | FR-03 D |
 | `src/harness/retrieval.py` | Paragraph chunking, `hash`/`ollama` embedders, per-run Chroma `Corpus` with search and drop | FR-03 B |
 | `src/harness/mock_agent.py` | Deterministic scripted agent (`mock-vulnerable` / `mock-safe`) | FR-01 |
 | `src/harness/ollama_agent.py` | `OllamaAgent`: Qwen via Ollama `/api/chat` with native tool calls (text `<tool_call>` fallback); temperature/seed/num_ctx recorded; errors → `AgentUnavailable` / `AgentTimeout` / `MalformedResponse` | FR-01 |

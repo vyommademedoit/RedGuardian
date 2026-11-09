@@ -46,4 +46,4 @@ Results go to MySQL if `MYSQL_URL` is set (env or `.env`; one-time setup in `scr
 
 ## Status
 
-All phases (0–7) done; tagged `v1.0.0`. Final results: [docs/results/final_report.md](docs/results/final_report.md) — mock and `qwen2.5:7b` benchmarks on fresh databases (MySQL and SQLite), each verified against its raw events. RAG runs use offline hash embeddings by default; add `--embedder ollama` to use `nomic-embed-text`.
+All phases (0–7) done; `v1.0.0` tagged, later work on branch `memory-completion` (memory update op, same-session memory attack, audit fixes). Final results: [docs/results/final_report.md](docs/results/final_report.md) — mock (MySQL and SQLite, identical) and `qwen2.5:7b` (MySQL) benchmarks over 11 attacks and 10 benign tasks, each verified against its raw events. RAG runs use offline hash embeddings by default; add `--embedder ollama` to use `nomic-embed-text`.

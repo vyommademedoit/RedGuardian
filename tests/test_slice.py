@@ -102,3 +102,22 @@ def test_dashboard_renders_runs(tmp_path, monkeypatch):
     at.run()
     assert not at.exception
     assert any("executed (blocked)" in m.value and "secret_egress" in m.value for m in at.markdown)
+
+
+def test_scenario_cleanup_runs_after_evidence_is_stored(engine, monkeypatch):
+    """PRD 10.2 / threat model: each scenario's named reset procedure actually runs."""
+    from harness import sandbox
+
+    seen = []
+    reset = sandbox.FIXTURES["reset_sandbox"]
+    monkeypatch.setitem(sandbox.FIXTURES, "reset_sandbox", lambda sb: (seen.append(list(sb.outbox)), reset(sb)))
+    r = run(engine, "RAG-001", "baseline")  # has a corpus: the runner already dropped it, reset must not drop it twice
+    finished = next(e for e in r.events if e.event_type is EventType.RUN_FINISHED)
+    assert len(seen) == 1 and seen[0] and finished.payload["outbox"] == seen[0]  # evidence recorded, then reset
+
+
+def test_shipped_scenarios_name_known_procedures():
+    from harness.sandbox import FIXTURES
+
+    for scenario, _ in LIB.values():
+        assert set(scenario.initial_state) | set(scenario.cleanup) <= set(FIXTURES), scenario.attack_id

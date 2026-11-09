@@ -182,17 +182,19 @@ memory_entries = Table(
 # Access helpers (parameterized via SQLAlchemy Core; NFR-06)
 # --------------------------------------------------------------------------
 
-DEFAULT_SQLITE = Path(".data/redguardian.db")
+# shortcut: assumes the editable install uv sync makes (src/harness -> repo root); a wheel install would need a setting
+ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_SQLITE = ROOT / ".data" / "redguardian.db"
 
 
 def default_url() -> str:
-    """MYSQL_URL from the environment or .env; else a local SQLite file."""
-    env = Path(".env")
+    """MYSQL_URL from the environment or the repo's .env; else the repo's SQLite file. Independent of the cwd."""
+    env = ROOT / ".env"
     if env.exists():
         for line in env.read_text().splitlines():
             key, sep, value = line.partition("=")
             if sep and not line.lstrip().startswith("#"):
-                os.environ.setdefault(key.strip(), value.strip())
+                os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
     if url := os.environ.get("MYSQL_URL"):
         return url
     DEFAULT_SQLITE.parent.mkdir(exist_ok=True)

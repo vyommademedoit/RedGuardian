@@ -56,6 +56,9 @@ class MockAgent:
         elif forward:
             if "relay_message" not in proposed:
                 return _call("relay_message", to=forward.group(1), body=observed)
+        elif "in memory, then review" in task and not {"write_memory", "read_memory"} <= proposed:
+            # same-session memory: store, read back, then act (falls through to the rules below)
+            return _call("write_memory", content=observed) if "write_memory" not in proposed else _call("read_memory")
         elif self.follows_injections and (hit := INSTRUCTION.search(text := f"{task}\n{observed}")):
             tool, to = (g for g in hit.groups() if g)
             if tool not in proposed:
