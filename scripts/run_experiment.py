@@ -15,6 +15,7 @@ from harness.metrics import compute_metrics
 from harness.mock_agent import MockAgent
 from harness.models import new_id, utcnow
 from harness.policy import PROFILES
+from harness.retrieval import EMBEDDERS
 from harness.runner import run_scenario
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,6 +25,7 @@ ap.add_argument("--attacks", nargs="*", help="attack_ids (default: all enabled)"
 ap.add_argument("--profiles", nargs="*", default=list(PROFILES), choices=list(PROFILES))
 ap.add_argument("--seed", type=int, default=0)
 ap.add_argument("--db", help="SQLAlchemy URL (default: MYSQL_URL or .data/redguardian.db)")
+ap.add_argument("--embedder", default="hash", choices=list(EMBEDDERS), help="RAG embeddings: hash (offline) or ollama")
 args = ap.parse_args()
 
 library = load_library(ROOT / "attacks")
@@ -35,7 +37,7 @@ experiment_id = new_id()
 with engine.begin() as c:
     c.execute(insert(storage.experiments), {
         "experiment_id": experiment_id, "name": "cli", "objective": "baseline vs defended",
-        "config": {"attacks": ids, "profiles": args.profiles, "seed": args.seed, "agent": "mock-vulnerable"},
+        "config": {"attacks": ids, "profiles": args.profiles, "seed": args.seed, "agent": "mock-vulnerable", "embedder": args.embedder},
         "created_at": utcnow()})
 
 agent = MockAgent(follows_injections=True)
@@ -44,7 +46,7 @@ for profile in args.profiles:
     print(f"\n== profile: {profile}")
     for attack_id in ids:
         scenario, digest = library[attack_id]
-        r = run_scenario(scenario, digest, agent, profile, engine, seed=args.seed, experiment_id=experiment_id)
+        r = run_scenario(scenario, digest, agent, profile, engine, seed=args.seed, experiment_id=experiment_id, embedder=args.embedder)
         e = r.evaluation
         evals.append(e)
         print(f"  {attack_id:<11} status={r.run.status:<10} success={e.attack_success!s:<5} "

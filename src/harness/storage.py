@@ -7,6 +7,7 @@ Chunks and embeddings live in ChromaDB (see docs/architecture.md), keyed by
 
 from __future__ import annotations
 
+import hashlib
 import os
 from datetime import UTC
 from pathlib import Path
@@ -28,6 +29,7 @@ from sqlalchemy import (
     UniqueConstraint,
     create_engine,
     insert,
+    inspect,
     select,
     update,
 )
@@ -132,14 +134,15 @@ metric_results = Table(
 documents = Table(
     "documents",
     metadata,
+    Column("corpus_id", String(64), primary_key=True),  # one corpus copy per run (= run_id)
     Column("doc_id", String(64), primary_key=True),
-    Column("corpus_id", String(64), nullable=False, index=True),
     Column("title", String(256)),
     Column("source", String(256), nullable=False),
     Column("trust", String(16), nullable=False),
     Column("poisoned", Boolean, nullable=False),  # ground truth; never shown to defenses
     Column("attack_id", String(32)),
     Column("sha256", String(64), nullable=False),
+    Column("text", Text, nullable=False),
 )
 
 memory_entries = Table(
@@ -182,6 +185,9 @@ def default_url() -> str:
 
 def connect(url: str | None = None) -> Engine:
     engine = create_engine(url or default_url())
+    if "documents" in (insp := inspect(engine)).get_table_names() and "text" not in {c["name"] for c in insp.get_columns("documents")}:
+        raise RuntimeError(f"{engine.url.render_as_string(hide_password=True)} has the pre-Phase-3 schema; "
+                           "it holds only demo runs, so delete it (or drop its tables) and rerun")
     metadata.create_all(engine)  # shortcut: no migrations yet (D-007); add Alembic when the schema changes under real data
     return engine
 
@@ -194,7 +200,16 @@ def save_run(engine: Engine, run: RunRecord) -> None:
 def finish_run(engine: Engine, run: RunRecord) -> None:
     with engine.begin() as c:
         c.execute(update(runs).where(runs.c.run_id == run.run_id)
-                  .values(status=run.status, error=run.error, finished_at=run.finished_at))
+                  .values(status=run.status, error=run.error, finished_at=run.finished_at,
+                          corpus_state_id=run.corpus_state_id))
+
+
+def save_documents(engine: Engine, corpus_id: str, docs: dict[str, dict], poisoned: set[str], attack_id: str) -> None:
+    rows = [{"corpus_id": corpus_id, "doc_id": doc_id, "title": d["title"], "source": d["source"], "trust": d["trust"],
+             "poisoned": doc_id in poisoned, "attack_id": attack_id if doc_id in poisoned else None,
+             "sha256": hashlib.sha256(d["text"].encode()).hexdigest(), "text": d["text"]} for doc_id, d in docs.items()]
+    with engine.begin() as c:
+        c.execute(insert(documents), rows)
 
 
 def save_evaluation(engine: Engine, ev: RunEvaluation, evaluator_version: str) -> None:

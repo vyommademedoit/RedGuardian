@@ -1329,16 +1329,17 @@ inspectable trace — `scripts/run_experiment.py`, `dashboard/app.py`.
 
 ## Phase 3 --- RAG surface
 
--   [ ] Add document ingestion and chunk metadata.
--   [ ] Integrate ChromaDB.
--   [ ] Implement clean and poisoned document fixtures.
--   [ ] Record retrieved chunks, scores, and provenance.
--   [ ] Add RAG poisoning scenarios and benign controls.
--   [ ] Add retrieval trust/provenance defense options.
--   [ ] Add retrieval/source visualization and corpus reset.
+-   [x] Add document ingestion and chunk metadata.
+-   [x] Integrate ChromaDB.
+-   [x] Implement clean and poisoned document fixtures.
+-   [x] Record retrieved chunks, scores, and provenance.
+-   [x] Add RAG poisoning scenarios and benign controls.
+-   [x] Add retrieval trust/provenance defense options.
+-   [x] Add retrieval/source visualization and corpus reset.
 
 **Deliverable:** RAG attack and defense experiments with source
-attribution.
+attribution --- `RAG-001`/`BENIGN-002`, `harness/retrieval.py`,
+`retrieval_screen` defense, "Retrieved sources" dashboard table.
 
 ## Phase 4 --- Persistent memory and relay surfaces
 

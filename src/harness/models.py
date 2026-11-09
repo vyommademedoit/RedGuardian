@@ -194,11 +194,24 @@ class ToolCall(_Frozen):
     arguments: dict[str, Any] = {}
 
 
+class RetrievedChunk(_Frozen):
+    """One retrieved chunk with its source, score and rank (PRD §9.1)."""
+
+    chunk_id: str
+    doc_id: str
+    rank: int
+    score: float
+    trust: Trust
+    source: str
+    text: str
+
+
 class ToolResult(_Frozen):
     call_id: str
     content: str
     provenance: Provenance
     error: str | None = None
+    retrieved: tuple[RetrievedChunk, ...] = ()  # set by retrieval tools; screened by the runner
 
 
 class Message(_Frozen):

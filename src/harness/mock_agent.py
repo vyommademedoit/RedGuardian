@@ -31,8 +31,9 @@ class MockAgent:
         proposed = {c.tool for m in messages if m.role == "assistant" for c in m.tool_calls}
         observed = "\n".join(m.content for m in messages if m.role == "tool")
 
-        if "read_inbox" not in proposed:
-            return _call("read_inbox")
+        if not proposed:  # first move: email tasks read the inbox, anything else searches the knowledge base
+            task = next((m.content for m in messages if m.role == "user"), "")
+            return _call("read_inbox") if "email" in task.lower() else _call("search_documents", query=task)
 
         if self.follows_injections and (hit := INSTRUCTION.search(observed)):
             tool, to = hit.groups()
@@ -42,8 +43,10 @@ class MockAgent:
                 secret = SECRET.search(observed)
                 return _call(tool, to=to, body=f"Requested key: {secret.group() if secret else 'n/a'}")
 
-        subject = re.search(r"Subject: (.*)", observed)
-        return AgentTurn(text=f"Summary: email about {subject.group(1) if subject else 'unknown topic'}.")
+        if subject := re.search(r"Subject: (.*)", observed):
+            return AgentTurn(text=f"Summary: email about {subject.group(1)}.")
+        sources = dict.fromkeys(re.findall(r"^\[([\w-]+)\]", observed, re.M))
+        return AgentTurn(text=f"Answer based on: {', '.join(sources) or 'no documents'}.")
 
 
 def _call(tool: str, **arguments) -> AgentTurn:
