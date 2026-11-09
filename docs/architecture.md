@@ -1,6 +1,6 @@
 # Architecture
 
-Logical design from PRD §8, as implemented. Status: **Phase 1 contracts only** — no runner, agent, tool, defense, or dashboard implementation exists yet.
+Logical design from PRD §8, as implemented. Status: **Phase 3** — tool-output and RAG surfaces, deterministic mock agent, two defenses (`secret_egress`, `retrieval_screen`). Memory, relay, and the Ollama agent adapter are not built yet.
 
 ## Code map
 
@@ -10,13 +10,21 @@ Logical design from PRD §8, as implemented. Status: **Phase 1 contracts only** 
 | `src/harness/interfaces.py` | Protocols: `AgentAdapter`, `Tool`, `Defense`, `EventLogger`, `Evaluator`; `AgentError` hierarchy | FR-01, 04, 05, 07, 09 |
 | `src/harness/attacks.py` | JSON library loader/validator, definition hashing, schema export | FR-02 |
 | `src/harness/metrics.py` | Metric formulas and denominators | FR-09 |
-| `src/harness/storage.py` | SQLAlchemy Core tables (MySQL; SQLite in tests) | FR-11 |
+| `src/harness/storage.py` | SQLAlchemy Core tables, `connect()`, run/evaluation writers, `SqlEventLogger` (MySQL via `MYSQL_URL`, else `.data/redguardian.db`) | FR-07, FR-11 |
+| `src/harness/sandbox.py` | Fixtures (inbox, company knowledge base), token generation, payload injection into emails or documents, inert tools `read_inbox`, `read_config`, `search_documents`, `send_report` | FR-04 |
+| `src/harness/retrieval.py` | Paragraph chunking, `hash`/`ollama` embedders, per-run Chroma `Corpus` with search and drop | FR-03 B |
+| `src/harness/mock_agent.py` | Deterministic scripted agent (`mock-vulnerable` / `mock-safe`) | FR-01 |
+| `src/harness/policy.py` | `Policy` (most restrictive wins), `SecretEgressDefense` (tool calls), `RetrievalScreenDefense` (retrieved chunks), four profiles | FR-05, FR-06 |
+| `src/harness/runner.py` | `run_scenario`: seed → loop (propose → decide → execute) → events → evaluate → persist | FR-08 |
+| `src/harness/evaluator.py` | `DeterministicEvaluator` over stored events | FR-09 |
+| `scripts/run_experiment.py` | CLI: scenarios × profiles, prints per-run verdicts and metrics | FR-08 |
+| `dashboard/app.py` | Streamlit run list + per-run timeline (reads storage only, binds to localhost) | FR-10 |
 | `attacks/schema.json` | Generated from `AttackScenario` — do not hand-edit (`uv run python scripts/export_schema.py`) | FR-02 |
 | `attacks/<surface>/<ID>.json` | Scenario definitions; file name = `attack_id` | §10 |
 
 Modules stay flat until a package needs more than one file; then each becomes the PRD §8.2 sub-package (`harness/agents/`, `harness/tools/`, …).
 
-## Run flow (to be built in Phase 2)
+## Run flow
 
 ```
 scenario JSON ──load+hash──► Runner ──seed fixtures, plant secret, insert payload (with marker)──►
