@@ -105,7 +105,7 @@ def compare(a: dict[str, MetricResult], b: dict[str, MetricResult]) -> list[dict
         delta = None if not ma or not mb or ma.value is None or mb.value is None else mb.value - ma.value
         worse = delta is not None and (delta > 0 if name in LOWER_IS_BETTER else delta < 0)
         out.append({"metric": name, "A": fmt(ma), "B": fmt(mb),
-                    "delta": "n/a" if delta is None else f"{delta:+.0%}", "worse": worse})
+                    "delta": "n/a" if delta is None else f"{delta * 100:+.0f} pp", "worse": worse})
     return out
 
 
@@ -180,7 +180,8 @@ def attack_path(events: Sequence[Event]) -> nx.MultiDiGraph:
     """source -> agent session -> memory/relay -> agent session -> action, from boundary events.
 
     Edge ``status``: ``observed`` (content reached the next hop), ``blocked`` (a defense stopped it),
-    ``executed`` (an action ran in the sandbox). ``marker`` = the attack canary crossed this edge."""
+    ``executed`` (an action ran in the sandbox), ``answered`` (the agent replied to the user).
+    ``marker`` = the attack canary crossed this edge."""
     g = nx.MultiDiGraph()
     session, agent, tokens = "s1", "assistant", []
     calls: dict[str, dict] = {}
@@ -239,7 +240,7 @@ def attack_path(events: Sequence[Event]) -> nx.MultiDiGraph:
             g.add_edge(me(), store, status="observed", marker=p.get("contains_canary", False),
                        detail=f"trust={p.get('trust')} origin={', '.join(p.get('origin', [])) or '-'}")
         elif t is EventType.AGENT_RESPONSE and "raw" not in p:
-            g.add_edge(me(), node("user_response", "action", "answer to user", 99), status="executed", marker=False,
+            g.add_edge(me(), node("user_response", "action", "answer to user", 99), status="answered", marker=False,
                        detail="answer delivered")
     right = max((d["col"] for _, d in g.nodes(data=True) if d["col"] != 99), default=1) + 1
     for _, d in g.nodes(data=True):  # actions go in one column, right of every session

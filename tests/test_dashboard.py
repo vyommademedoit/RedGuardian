@@ -42,8 +42,8 @@ def test_compare_flags_utility_regression(db):
     _, engine, xid = db
     by = reporting.metrics_by_profile(reporting.run_rows(engine, xid))
     rows = {r["metric"]: r for r in reporting.compare(by["baseline"], by["defended"])}
-    assert rows["benign_task_utility"]["worse"] and rows["benign_task_utility"]["delta"] == "-50%"  # BENIGN-006 refused
-    assert not rows["attack_success_rate"]["worse"] and rows["attack_success_rate"]["delta"] == "-100%"
+    assert rows["benign_task_utility"]["worse"] and rows["benign_task_utility"]["delta"] == "-50 pp"  # BENIGN-006 refused
+    assert not rows["attack_success_rate"]["worse"] and rows["attack_success_rate"]["delta"] == "-100 pp"
 
 
 def test_outcome_never_calls_a_blocked_attempt_a_compromise(db):
@@ -110,14 +110,14 @@ def test_every_view_renders(db, monkeypatch, view):
 
 def test_comparison_warns_on_utility_regression(db, monkeypatch):
     at = app(db[0], monkeypatch, "Comparison")
-    assert any("Benign utility regresses" in w.value for w in at.warning)
+    assert any("Normal tasks done drops" in w.value for w in at.warning)
 
 
 def test_evidence_search_filters_events(db, monkeypatch):
     at = app(db[0], monkeypatch, "Evidence")
-    at.text_input[0].input("output_guard").run()
+    at.text_input[0].input("output guard").run()  # plain words find the id too
     table = at.dataframe[0].value
-    assert len(table) and set(table["defense"]) <= {"output_guard", ""}
+    assert len(table) and set(table["defense"]) <= {"output guard", ""}
 
 
 def test_empty_database_shows_guidance(tmp_path, monkeypatch):
@@ -150,3 +150,123 @@ def test_setup_run_without_recovery_is_not_measured():
     run_scenario(*LIB["BENIGN-004"], MockAgent(), "defended", engine, memory_namespace=ns)
     by = reporting.metrics_by_profile(reporting.run_rows(engine))
     assert list(by) == ["defended"] and by["defended"]["recovery_success"].denominator == 1
+
+
+def test_vocab_covers_every_metric_and_stage_in_order():
+    import sys
+
+    sys.path.insert(0, str(ROOT / "dashboard"))
+    from harness.models import Stage
+    from vocab import LABELS, SEVERITY, label, yes_no
+
+    assert set(reporting.HEADLINE) <= set(LABELS)
+    assert list(SEVERITY) == ["none"] + [s.name.lower() for s in sorted(Stage)]
+    assert label("no_taint_guard") == "all but taint guard" and label("only_secret_egress") == "only secret egress"
+    assert label("baseline") == "baseline" and "_" not in label("attack_success_rate")
+    assert (yes_no(True), yes_no(False)) == ("Yes", "No")
+
+
+def test_plain_answer_is_not_drawn_as_an_executed_action(db):
+    _, engine, _ = db
+    g = reporting.attack_path(run_scenario(*LIB["BENIGN-001"], MockAgent(), "baseline", engine).events)
+    to_user = {d["status"] for _, v, d in g.edges(data=True) if v == "user_response"}
+    assert to_user and "executed" not in to_user and to_user <= {"answered", "blocked"}
+
+
+def test_overview_speaks_plain_words_and_percentage_points(db, monkeypatch):
+    at = app(db[0], monkeypatch, "Overview")
+    tiles = [m for m in at.metric if m.delta]
+    assert tiles and all("_" not in m.label for m in at.metric)
+    assert all(m.delta == "no change" or m.delta.endswith(" pp") for m in tiles)
+    assert sorted(t.value for t in at.title) == ["Overview", "RedGuardian"]  # page title + sidebar brand, once each
+
+
+def _vocab():
+    import sys
+
+    sys.path.insert(0, str(ROOT / "dashboard"))
+    import vocab
+
+    return vocab
+
+
+def _contrast(a: str, b: str) -> float:
+    def lum(h):
+        c = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        c = [v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4 for v in c]
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    hi, lo = sorted((lum(a), lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def test_every_event_type_has_a_plain_name():
+    from harness.models import EventType
+
+    v = _vocab()
+    assert {e.value for e in EventType} <= set(v.EVENTS) and "_" not in v.label("policy_decision")
+
+
+def test_severity_ramp_reads_in_order_without_colour():
+    v = _vocab()
+    bg, ramp = "#0E1117", list(v.SEVERITY.values())
+    on_bg = [_contrast(c, bg) for c in ramp]
+    assert all(x >= 3 for x in on_bg) and on_bg == sorted(on_bg) and len(set(on_bg)) == len(on_bg)  # strictly brighter
+    assert all(_contrast(a, b) >= 1.2 for a, b in zip(ramp, ramp[1:]))
+    assert list(v.PATTERN) == list(v.SEVERITY) and len(set(v.PATTERN.values())) == len(v.PATTERN)
+
+
+def test_run_views_show_profile_names_but_export_keeps_ids(db, monkeypatch):
+    at = app(db[0], monkeypatch, "Run explorer")
+    assert not any("_" in p for p in at.dataframe[0].value["profile"])
+    at = app(db[0], monkeypatch, "Evidence")
+    table = at.dataframe[0].value
+    assert not any("_" in p for p in table["profile"]) and not any("_" in e for e in table["event"])
+    # Export still builds from summary_rows (raw ids); only the display copy shown() is labelled.
+
+
+def test_stage_drilldown_by_keyboard_matches_the_chart_count(db, monkeypatch):
+    _, engine, xid = db
+    at = app(db[0], monkeypatch, "Overview")
+    at.selectbox(key="ovw_profile").select("defended").run()
+    at.selectbox(key="ovw_stage").select("none").run()
+    want = reporting.stage_distribution(reporting.run_rows(engine, xid))["defended"]["none"]
+    assert not at.exception and want and len(at.dataframe[0].value) == want
+
+
+def test_defenses_and_library_values_read_as_words(db, monkeypatch):
+    at = app(db[0], monkeypatch, "Run explorer")
+    table = at.dataframe[0].value
+    assert not any("_" in str(c) for col in ("profile", "surface", "outcome", "blocked by") for c in table[col])
+    at = app(db[0], monkeypatch, "Attack library")
+    options = at.multiselect(key="lib_surface").options
+    assert options and not any("_" in o for o in options)
+    at.multiselect(key="lib_surface").select(at.multiselect(key="lib_surface").options[0]).run()
+    assert not at.exception and len(at.dataframe[0].value) >= 1
+
+
+def test_run_lists_open_only_after_a_row_is_selected(db, monkeypatch):
+    at = app(db[0], monkeypatch, "Overview")
+    at.selectbox(key="ovw_profile").select("baseline").run()
+    assert at.button(key="open_stage_runs").disabled
+    at = app(db[0], monkeypatch, "Attack library")
+    assert at.button(key="open_lib").disabled
+    at = app(db[0], monkeypatch, "Comparison")  # one way to open a run on every page
+    assert at.button(key="open_cmp").disabled and not [s for s in at.selectbox if s.key == "pick_cmp"]
+
+
+def test_worse_rows_have_their_own_readable_colour():
+    v = _vocab()
+    assert v.WORSE not in v.SEVERITY.values() and v.WORSE != v.OBSERVED
+    bg = tuple(int("0E1117"[i:i + 2], 16) for i in (0, 2, 4))
+    fg = tuple(int(v.WORSE[1:][i:i + 2], 16) for i in (0, 2, 4))
+    mixed = "#" + "".join(f"{round(0.25 * f + 0.75 * b):02X}" for f, b in zip(fg, bg))  # 0x40 alpha ≈ 25 %
+    assert _contrast("#FAFAFA", mixed) >= 4.5
+    assert v.plain("stopped by output_guard, input_screen") == "stopped by output guard, input screen"
+
+
+
+def test_dashboard_is_pinned_to_the_dark_theme_the_colours_are_tuned_for():
+    import tomllib
+
+    config = tomllib.loads((ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8"))
+    assert config["theme"]["base"] == "dark"  # severity ramp contrast is checked against #0E1117 only

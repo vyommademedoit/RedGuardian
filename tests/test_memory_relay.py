@@ -126,7 +126,8 @@ def test_dashboard_shows_memory_and_relay_path(tmp_path, monkeypatch):
     table = at.dataframe[-1].value
     assert list(table["operation"]) == ["memory_write", "memory_read"]
     assert list(table["session"]) == ["s1", "s2"] and bool(table["carries marker"].iloc[0])
-    at.selectbox(key="run_select").select(relay.run.run_id).run()
+    at.session_state["run_id"] = relay.run.run_id  # same path as "Open in run explorer"
+    at.run()
     table = at.dataframe[-1].value
     assert list(table["policy"]) == ["quarantine by relay_screen"] and table["session"].iloc[0] == "s1"
 

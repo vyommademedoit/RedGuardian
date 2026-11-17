@@ -101,7 +101,7 @@ def test_dashboard_renders_runs(tmp_path, monkeypatch):
     at.session_state["view"] = "Run explorer"
     at.run()
     assert not at.exception
-    assert any("executed (blocked)" in m.value and "secret_egress" in m.value for m in at.markdown)
+    assert any("executed (blocked)" in m.value and "secret egress" in m.value for m in at.markdown)
 
 
 def test_scenario_cleanup_runs_after_evidence_is_stored(engine, monkeypatch):

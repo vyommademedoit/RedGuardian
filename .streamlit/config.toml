@@ -5,3 +5,11 @@ headless = true
 
 [browser]
 gatherUsageStats = false
+
+[client]
+# Hide developer controls (Deploy, Rerun, Clear cache); viewers keep print and theme.
+toolbarMode = "viewer"
+
+[theme]
+# The stage colours are tuned for the dark background (tests/test_dashboard.py); on white they read backwards.
+base = "dark"
