@@ -1,37 +1,16 @@
 # RedGuardian
 
-A local red-team harness that measures how prompt injection spreads through a tool-using LLM agent, and how well defenses outside the model stop it without breaking normal work.
+A local red-team harness that measures how far prompt injection spreads through a tool-using LLM agent, and how well defenses outside the model stop it without breaking normal work.
 
-Everything runs on one machine: synthetic secrets, inert sandboxed tools (nothing is ever really sent), a scripted mock agent or a local model through Ollama, and results in MySQL or SQLite. Product intent: [PRD.md](PRD.md). Design and results: [docs/](docs/).
+Everything runs on one machine: synthetic secrets, inert sandboxed tools (nothing is ever really sent), a scripted mock agent or a local model through Ollama, and results in MySQL or SQLite.
 
-## What it does
-
-1. **Attacks the agent on five surfaces.** Each attack is a JSON scenario in [`attacks/`](attacks/) that hides an instruction where the agent will read it:
-   - **Direct input:** the user pastes in a note that contains an instruction.
-   - **Tool output:** an email or tool result.
-   - **RAG:** a poisoned knowledge-base chunk.
-   - **Persistent memory:** a note that lasts into a later session, or is read back in the same one.
-   - **Inter-agent relay:** a message forwarded to a second agent.
-2. **Traces how far each payload travels** with a canary marker. The stages are Exposed (read by the agent), Persisted (saved to memory), Relayed (passed to another agent) and Executed (acted on).
-3. **Enforces eight switchable defenses outside the model**, at the points where data enters the agent or leaves it:
-
-   | Defense | What it checks |
-   |---|---|
-   | `secret_egress` | a labelled secret may only go to its allowed destinations |
-   | `output_guard` | the final answer is checked as an egress channel too |
-   | `destination_allowlist` | outbound sends go to exactly one address in `corp.test` |
-   | `taint_guard` | blocks outbound actions after the agent has read untrusted content |
-   | `input_screen`, `retrieval_screen`, `memory_screen`, `relay_screen` | pattern screens on what enters the agent from each surface |
-
-4. **Scores each run from stored events**, using a deterministic evaluator that doesn't rely on an LLM judge. Attack success, secret leaks and unauthorized actions are counted separately. Every attack is paired with benign tasks under the same defenses, so the report shows security next to utility and false refusals.
-5. **Tests recovery.** It poisons memory, quarantines the poisoned entries by where they came from, reruns the task, and checks the result from the new run's events.
-6. **Reports and verifies.** It writes a Markdown report, a Streamlit dashboard and a verifier that recomputes every stored metric from the raw events.
+**Jump to:** [Results](#results) · [How it works](#how-it-works) · [Quick start](#quick-start) · [Full report](docs/results/final_report.md) · [Product spec](PRD.md)
 
 ## Results
 
-The benchmark has 11 attacks and 10 benign tasks, run under 18 defense profiles: baseline (no defenses), defended (all eight), each defense removed, and each defense alone. Full report: [docs/results/final_report.md](docs/results/final_report.md).
+The benchmark has 11 attacks and 10 benign tasks, run under 18 defense profiles: baseline (no defenses), defended (all eight), each defense removed, and each defense alone. The mock agent follows every injection, so it shows what the defenses can stop. `qwen2.5:7b` is a real local model, so it shows what actually happens. Counts are runs out of the total. *Attack success* means the attacker's full goal was met (the key reached them); *unauthorized action ran* counts any forbidden action, even without the key.
 
-| Profile | Attack success | Secret leaked | Unauthorized action ran | Benign utility |
+| Profile | Attack success | Secret leaked | Unauthorized action ran | Benign tasks done |
 |---|---|---|---|---|
 | Mock baseline | 11/11 | 11/11 | 10/11 | 10/10 |
 | Mock defended | 0/11 | 0/11 | 0/11 | 8/10 |
@@ -44,7 +23,30 @@ The main findings:
 - **Memory defenses only protect later sessions.** A same-session memory attack (`MEM-002`) gets through them.
 - **Defenses cost some benign tasks.** On the mock, `taint_guard` and `input_screen` each wrongly refuse one benign task.
 
-Practical guidance: [docs/mitigations.md](docs/mitigations.md).
+Full numbers and evidence: [final report](docs/results/final_report.md). Practical guidance: [mitigations](docs/mitigations.md).
+
+## How it works
+
+1. **Attacks the agent on five surfaces.** Each attack is a JSON scenario in [`attacks/`](attacks/) that hides an instruction where the agent will read it:
+   - **Direct input:** the user pastes in a note that contains an instruction.
+   - **Tool output:** an email or tool result.
+   - **RAG:** a poisoned knowledge-base chunk.
+   - **Persistent memory:** a note that lasts into a later session, or is read back in the same one.
+   - **Inter-agent relay:** a message forwarded to a second agent.
+2. **Traces how far each payload travels** with a canary marker. The stages are Exposed (read by the agent), Persisted (saved to memory), Relayed (passed to another agent) and Executed (acted on).
+3. **Enforces eight switchable defenses outside the model**, at the points where data enters the agent or leaves it:
+
+   | Defense | What it checks |
+   |---|---|
+   | `secret_egress` | A labelled secret may only go to its allowed destinations. |
+   | `output_guard` | The final answer to the user may not contain a secret either. |
+   | `destination_allowlist` | Outbound sends must go to exactly one address in `corp.test`. |
+   | `taint_guard` | Blocks outbound actions once the agent has read untrusted content. |
+   | `input_screen`, `retrieval_screen`, `memory_screen`, `relay_screen` | Pattern screens on what enters the agent from each surface. |
+
+4. **Scores each run from stored events**, using a deterministic evaluator that doesn't rely on an LLM judge. Attack success, secret leaks and unauthorized actions are counted separately. Every attack is paired with benign tasks under the same defenses, so the report shows security next to utility and false refusals.
+5. **Tests recovery.** It poisons memory, quarantines the poisoned entries by where they came from, reruns the task, and checks the result from the new run's events.
+6. **Reports and verifies.** It writes a Markdown report, a Streamlit dashboard and a verifier that recomputes every stored metric from the raw events.
 
 ## Quick start
 
@@ -138,4 +140,4 @@ tests/              pytest suite
 
 ## Status
 
-All PRD phases (0–7) are complete. `v1.0.0` is tagged. Later work is on the `memory-completion` branch: the memory update operation, the same-session memory attack, audit fixes and refreshed benchmarks.
+Complete: all PRD phases (0–7), released as `v1.0.0`. Since then `main` has added the memory update operation, a same-session memory attack, audit fixes, refreshed benchmarks, and a dashboard in plain words. Decisions are logged in [docs/decisions.md](docs/decisions.md).
