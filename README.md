@@ -4,7 +4,7 @@ A local red-team harness that measures how far prompt injection spreads through 
 
 Everything runs on one machine: synthetic secrets, inert sandboxed tools (nothing is ever really sent), a scripted mock agent or a local model through Ollama, and results in MySQL or SQLite.
 
-**Jump to:** [Results](#results) · [How it works](#how-it-works) · [Quick start](#quick-start) · [Full report](docs/results/final_report.md) · [Product spec](PRD.md)
+**Jump to:** [Results](#results) · [How it works](#how-it-works) · [Quick start](#quick-start) · [Full report](docs/results/final_report.md)
 
 ## Results
 
@@ -140,4 +140,4 @@ tests/              pytest suite
 
 ## Status
 
-Complete: all PRD phases (0–7), released as `v1.0.0`. Since then `main` has added the memory update operation, a same-session memory attack, audit fixes, refreshed benchmarks, and a dashboard in plain words. Decisions are logged in [docs/decisions.md](docs/decisions.md).
+Complete: all planned phases (0–7), released as `v1.0.0`. Since then `main` has added the memory update operation, a same-session memory attack, audit fixes, refreshed benchmarks, and a dashboard in plain words. Decisions are logged in [docs/decisions.md](docs/decisions.md).

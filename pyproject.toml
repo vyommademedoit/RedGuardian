@@ -2,7 +2,7 @@
 name = "redguardian"
 version = "0.1.0"
 description = "Local prompt-injection red-team harness for a tool-using LLM agent"
-readme = "PRD.md"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "chromadb>=1.5.9",
