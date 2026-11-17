@@ -1,33 +1,120 @@
 # RedGuardian
 
-Local prompt-injection red-team harness for one tool-using LLM agent. Synthetic data and inert, sandboxed tools only. Product intent: [PRD.md](PRD.md); design: [docs/](docs/).
+A local red-team harness that measures how prompt injection spreads through a tool-using LLM agent, and how well defenses outside the model stop it without breaking normal work.
 
-It runs data-driven attacks on five surfaces (direct input, tool output, RAG, persistent memory, inter-agent relay) against a scripted mock agent or a local Qwen model, enforces eight independently switchable defenses outside the model, traces how far each payload travels (Exposed → Persisted → Relayed → Executed), and reports security next to benign utility.
+Everything runs on one machine: synthetic secrets, inert sandboxed tools (nothing is ever really sent), a scripted mock agent or a local model through Ollama, and results in MySQL or SQLite. Product intent: [PRD.md](PRD.md). Design and results: [docs/](docs/).
+
+## What it does
+
+1. **Attacks the agent on five surfaces.** Each attack is a JSON scenario in [`attacks/`](attacks/) that hides an instruction where the agent will read it:
+   - **Direct input:** the user pastes in a note that contains an instruction.
+   - **Tool output:** an email or tool result.
+   - **RAG:** a poisoned knowledge-base chunk.
+   - **Persistent memory:** a note that lasts into a later session, or is read back in the same one.
+   - **Inter-agent relay:** a message forwarded to a second agent.
+2. **Traces how far each payload travels** with a canary marker. The stages are Exposed (read by the agent), Persisted (saved to memory), Relayed (passed to another agent) and Executed (acted on).
+3. **Enforces eight switchable defenses outside the model**, at the points where data enters the agent or leaves it:
+
+   | Defense | What it checks |
+   |---|---|
+   | `secret_egress` | a labelled secret may only go to its allowed destinations |
+   | `output_guard` | the final answer is checked as an egress channel too |
+   | `destination_allowlist` | outbound sends go to exactly one address in `corp.test` |
+   | `taint_guard` | blocks outbound actions after the agent has read untrusted content |
+   | `input_screen`, `retrieval_screen`, `memory_screen`, `relay_screen` | pattern screens on what enters the agent from each surface |
+
+4. **Scores each run from stored events**, using a deterministic evaluator that doesn't rely on an LLM judge. Attack success, secret leaks and unauthorized actions are counted separately. Every attack is paired with benign tasks under the same defenses, so the report shows security next to utility and false refusals.
+5. **Tests recovery.** It poisons memory, quarantines the poisoned entries by where they came from, reruns the task, and checks the result from the new run's events.
+6. **Reports and verifies.** It writes a Markdown report, a Streamlit dashboard and a verifier that recomputes every stored metric from the raw events.
+
+## Results
+
+The benchmark has 11 attacks and 10 benign tasks, run under 18 defense profiles: baseline (no defenses), defended (all eight), each defense removed, and each defense alone. Full report: [docs/results/final_report.md](docs/results/final_report.md).
+
+| Profile | Attack success | Secret leaked | Unauthorized action ran | Benign utility |
+|---|---|---|---|---|
+| Mock baseline | 11/11 | 11/11 | 10/11 | 10/10 |
+| Mock defended | 0/11 | 0/11 | 0/11 | 8/10 |
+| `qwen2.5:7b` baseline | 0/11 | 0/11 | 5/11 | 9/10 |
+| `qwen2.5:7b` defended | 0/11 | 0/11 | 0/11 | 7/10 |
+
+The main findings:
+- **The real model obeys injections but rarely completes them.** It sends to the attacker but never with the real key.
+- **Data-flow checks hold against reworded attacks; pattern screens don't.** `secret_egress` and `taint_guard` each stop 10/11 attacks alone against the mock. Every reworded variant got past every screen.
+- **Memory defenses only protect later sessions.** A same-session memory attack (`MEM-002`) gets through them.
+- **Defenses cost some benign tasks.** On the mock, `taint_guard` and `input_screen` each wrongly refuse one benign task.
+
+Practical guidance: [docs/mitigations.md](docs/mitigations.md).
 
 ## Quick start
 
+Requirements: Python 3.12+ and [uv](https://docs.astral.sh/uv/). Optional: [Ollama](https://ollama.com/) for the real model, and MySQL 8 as the results store.
+
 ```bash
 uv sync
-uv run pytest
-uv run python scripts/run_experiment.py      # every scenario under every profile (mock agent, ~15 s)
-uv run streamlit run dashboard/app.py         # http://localhost:8501
+uv run pytest                                   # test suite (the live-model test is skipped without Ollama)
+uv run python scripts/run_experiment.py         # every scenario under every profile, mock agent (~15 s)
+uv run streamlit run dashboard/app.py           # dashboard at http://localhost:8501
 ```
 
-Local model (Ollama running, `ollama pull qwen2.5:7b`):
+With a local model (Ollama running, then `ollama pull qwen2.5:7b`):
 
 ```bash
-uv run python scripts/run_experiment.py --agent ollama --profiles baseline defended --report docs/results/report.md
+uv run python scripts/run_experiment.py --agent ollama --report docs/results/report.md
 ```
 
-| Command | Purpose |
+Useful options for `run_experiment.py`:
+- `--attacks TOOL-001 MEM-002` runs only the listed scenarios.
+- `--profiles baseline defended` runs only the listed defense profiles.
+- `--repeats 3` runs each scenario three times.
+- `--embedder ollama` uses `nomic-embed-text` for RAG, instead of the offline hash embeddings.
+- `--db sqlite://` makes a throwaway in-memory run.
+
+### Results database
+
+Results go to MySQL if `MYSQL_URL` is set, either in the environment or in a `.env` file in the repo root. Otherwise they go to `.data/redguardian.db` (SQLite). To set up MySQL once:
+1. Choose a password and run [scripts/mysql_setup.sql](scripts/mysql_setup.sql) as an admin. It creates a least-privilege `redguardian` user.
+2. Add this line to `.env`, which git ignores:
+
+```
+MYSQL_URL=mysql+pymysql://redguardian:<password>@localhost:3306/redguardian
+```
+
+## Scripts
+
+| Script | Purpose |
 |---|---|
 | `scripts/run_experiment.py` | scenarios × profiles × repeats, recovery checks, optional full report (`--report`) |
-| `scripts/make_report.py` | Markdown report (FR-12) for any stored experiment |
-| `scripts/verify_metrics.py` | recompute every metric from raw events; exit 1 on any disagreement |
+| `scripts/make_report.py` | Markdown report for any stored experiment |
+| `scripts/verify_metrics.py` | re-evaluate every run and recompute every metric from raw events; exit 1 on any disagreement |
 | `scripts/reset_db.py` | empty, versioned schema (dry run unless `--yes`) |
 | `scripts/export_schema.py` | regenerate `attacks/schema.json` and `db/schema_v1.mysql.sql` |
 
-Results go to MySQL if `MYSQL_URL` is set (env or `.env`; one-time setup in `scripts/mysql_setup.sql`), otherwise to `.data/redguardian.db` (SQLite). Use `--db sqlite://` for a throwaway in-memory run.
+## Project layout
+
+```
+attacks/            scenario library (JSON, validated by attacks/schema.json)
+  direct/ tool_output/ rag/ memory/ relay/   attack scenarios by surface
+  benign/                                    benign control tasks
+src/harness/
+  runner.py         runs one scenario: sessions, agent loop, policy checks, event log
+  sandbox.py        inert tools (email, search, memory, relay, send_report) and fixtures
+  policy.py         the eight defenses and the defense profiles
+  evaluator.py      deterministic scoring from stored events
+  metrics.py        rates with raw counts and denominators
+  memory.py         persistent memory with provenance, quarantine, update, delete
+  retrieval.py      ChromaDB corpus and embedders for the RAG surface
+  mock_agent.py     scripted agent that follows injections (shows what defenses can stop)
+  ollama_agent.py   local model adapter (temperature 0, fixed seed)
+  storage.py        SQLAlchemy schema for MySQL and SQLite
+  reporting.py      metrics by profile, outcome labels, attack paths, Markdown report
+  verify.py         independent check of stored results against raw events
+dashboard/          Streamlit dashboard
+scripts/            command-line entry points (above)
+db/                 generated MySQL DDL
+docs/               design, decisions, limitations and results
+tests/              pytest suite
+```
 
 ## Documents
 
@@ -40,10 +127,15 @@ Results go to MySQL if `MYSQL_URL` is set (env or `.env`; one-time setup in `scr
 | [docs/limitations.md](docs/limitations.md) | what the results do not show; untested cases |
 | [docs/reproducibility.md](docs/reproducibility.md) | machine, versions, model config, clean-run commands |
 | [docs/demo.md](docs/demo.md) | 10-minute demonstration script |
-| [docs/results/final_report.md](docs/results/final_report.md) | final benchmark and mitigation report; per-run reports alongside |
-| [docs/mitigations.md](docs/mitigations.md) | mitigation guide |
+| [docs/mitigations.md](docs/mitigations.md) | mitigation guide for builders of tool-using agents |
 | [docs/acceptance.md](docs/acceptance.md) | evidence for each MVP acceptance criterion |
+| [docs/results/](docs/results/) | final report and the per-benchmark reports |
+
+## Safety and limits
+
+- **Safe to run.** Secrets are synthetic and every tool is inert, so "sent" messages only go to an in-memory outbox. The dashboard listens on localhost only. Nothing is sent to a cloud service.
+- **Limited scope.** The results come from one small model at temperature 0, a small hand-written attack library, regex screens and heuristic refusal detection. A clean result means these scenarios didn't succeed, not that an agent is secure. See [docs/limitations.md](docs/limitations.md).
 
 ## Status
 
-All phases (0–7) done; `v1.0.0` tagged, later work on branch `memory-completion` (memory update op, same-session memory attack, audit fixes). Final results: [docs/results/final_report.md](docs/results/final_report.md) — mock (MySQL and SQLite, identical) and `qwen2.5:7b` (MySQL) benchmarks over 11 attacks and 10 benign tasks, each verified against its raw events. RAG runs use offline hash embeddings by default; add `--embedder ollama` to use `nomic-embed-text`.
+All PRD phases (0–7) are complete. `v1.0.0` is tagged. Later work is on the `memory-completion` branch: the memory update operation, the same-session memory attack, audit fixes and refreshed benchmarks.
